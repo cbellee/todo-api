@@ -31,7 +31,7 @@ func main() {
 		log.Info("using local in memory SQLite database")
 		db, err := gorm.Open(sqlite.Open("file:memdb1?mode=memory&cache=shared"), &gorm.Config{})
 		if err != nil {
-			log.Errorf("Failed to open local db: %v", err)
+			log.Errorf("Failed to open local db with error: %v", err)
 		}
 		env = &Env{db: db}
 	} else {
