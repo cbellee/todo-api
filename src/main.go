@@ -29,8 +29,6 @@ func main() {
 
 	if strings.TrimSpace(dsn) == "" {
 		log.Info("using local in memory SQLite database")
-		log.Infof("connection string: '%s'", dsn)
-
 		db, err := gorm.Open(sqlite.Open("file:memdb1?mode=memory&cache=shared"), &gorm.Config{})
 		if err != nil {
 			log.Errorf("Failed to open local db: %v", err)
@@ -38,11 +36,9 @@ func main() {
 		env = &Env{db: db}
 	} else {
 		log.Info("using Azure SQL database")
-		log.Infof("connection string: '%s'", dsn)
-
 		db, err := gorm.Open(sqlserver.Open(dsn), &gorm.Config{})
 		if err != nil {
-			log.Errorf("Failed to open remote db with connection string: '%s' \n error: '%v'", dsn, err)
+			log.Errorf("Failed to open remote db with error: '%v'", err)
 		}
 		env = &Env{db: db}
 	}
