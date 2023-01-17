@@ -1,8 +1,10 @@
 package models
 
 import (
-	"gorm.io/gorm"
+	"fmt"
+
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 type TodoItemEntity struct {
@@ -25,7 +27,6 @@ func GetAll(db *gorm.DB) (items []TodoItemEntity, err error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return todos, nil
 }
 
@@ -33,19 +34,18 @@ func GetByCompletionStatus(db *gorm.DB, completed bool) (items []TodoItemEntity,
 	var todos []TodoItemEntity
 	err = db.Where("completed = ?", completed).Find(&todos).Error
 	if err != nil {
+		log.Warn("Todo item with state 'completed' not found in database")
 		return nil, err
 	}
-
 	return todos, nil
 }
 
-func GetItemById(db *gorm.DB, id int) bool {
+func GetById(db *gorm.DB, id int) (item *TodoItemEntity, err error) {
 	todo := &TodoItemEntity{}
 	result := db.First(&todo, id)
 	if result.Error != nil {
 		log.Warn("Todo item not found in database")
-		return false
+		return nil, fmt.Errorf("item not found")
 	}
-	
-	return true
+	return todo, nil
 }

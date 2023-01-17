@@ -12,11 +12,12 @@ import (
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 
+	models "todo-api/models"
+
 	"github.com/rs/cors"
 	"gorm.io/driver/sqlite"
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
-	models "todo-api/models"
 )
 
 type Env struct {
@@ -51,9 +52,10 @@ func main() {
 
 	router := mux.NewRouter()
 	router.HandleFunc(fmt.Sprintf("%s/healthz", funcPrefix), healthz).Methods("GET")
-	router.HandleFunc(fmt.Sprintf("%s/todos", funcPrefix), env.get).Methods("GET")
+	router.HandleFunc(fmt.Sprintf("%s/todos", funcPrefix), env.getAll).Methods("GET")
 	router.HandleFunc(fmt.Sprintf("%s/todos/completed", funcPrefix), env.getCompleted).Methods("GET")
 	router.HandleFunc(fmt.Sprintf("%s/todos/incomplete", funcPrefix), env.getIncomplete).Methods("GET")
+	router.HandleFunc(fmt.Sprintf("%s/todos/{id}", funcPrefix), env.getById).Methods("GET")
 	router.HandleFunc(fmt.Sprintf("%s/todos", funcPrefix), env.create).Methods("POST")
 	router.HandleFunc(fmt.Sprintf("%s/todos/{id}", funcPrefix), env.update).Methods("PATCH")
 	router.HandleFunc(fmt.Sprintf("%s/todos/complete/{id}", funcPrefix), env.complete).Methods("PATCH")
@@ -75,6 +77,55 @@ func healthz(w http.ResponseWriter, r *http.Request) {
 func init() {
 	log.SetFormatter(&log.TextFormatter{})
 	log.SetReportCaller(true)
+}
+
+func (env *Env) getAll(w http.ResponseWriter, r *http.Request) {
+	allTodoItems, err := models.GetAll(env.db)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(err)
+	}
+	log.Info(fmt.Printf("TodoItem count: %d\n", len(allTodoItems)))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(allTodoItems)
+}
+
+func (env *Env) getById(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, _ := strconv.Atoi(vars["id"])
+
+	todoItem, err := models.GetById(env.db, id)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(err)
+		return
+	}
+	log.Info("TodoItem: %s", todoItem)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(todoItem)
+}
+
+func (env *Env) getCompleted(w http.ResponseWriter, r *http.Request) {
+	log.Info("Get completed TodoItems")
+	completedTodoItems, err := models.GetByCompletionStatus(env.db, true)
+	fmt.Print(completedTodoItems)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(completedTodoItems)
+}
+
+func (env *Env) getIncomplete(w http.ResponseWriter, r *http.Request) {
+	log.Info("Get Incomplete TodoItems")
+	incompleteTodoItems, err := models.GetByCompletionStatus(env.db, false)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(incompleteTodoItems)
 }
 
 func (env *Env) create(w http.ResponseWriter, r *http.Request) {
@@ -114,14 +165,12 @@ func (env *Env) update(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	if err := models.GetItemById(env.db, id); !err {
+	if todoItem, err := models.GetById(env.db, id); err != nil {
 		io.WriteString(w, `{"updated": "false", "error": "Record Not Found"}`)
 	} else {
 		log.WithFields(log.Fields{"Id": id}).Info("Updating TodoItem")
-		todo := &models.TodoItemEntity{}
-		env.db.First(&todo, id)
-		todo.Description = t.Description
-		env.db.Save(&todo)
+		todoItem.Description = t.Description
+		env.db.Save(&todoItem)
 		io.WriteString(w, `{"updated": true}`)
 	}
 }
@@ -132,13 +181,11 @@ func (env *Env) complete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])
 
-	if err := models.GetItemById(env.db, id); !err {
+	if todoItem, err := models.GetById(env.db, id); err != nil {
 		io.WriteString(w, `{"deleted": false, "error": "Record Not Found"}`)
 	} else {
-		todo := &models.TodoItemEntity{}
-		env.db.First(&todo, id)
-		todo.Completed = true
-		env.db.Save(&todo)
+		todoItem.Completed = true
+		env.db.Save(&todoItem)
 		io.WriteString(w, `{"updated": true}`)
 	}
 }
@@ -149,46 +196,11 @@ func (env *Env) delete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := strconv.Atoi(vars["id"])
 
-	if err := models.GetItemById(env.db, id); !err {
+	if todoItem, err := models.GetById(env.db, id); err != nil {
 		io.WriteString(w, `{"deleted": "false", "error": "Record Not Found"}`)
 	} else {
 		log.WithFields(log.Fields{"Id": id}).Info("Delete TodoItem")
-		todo := &models.TodoItemEntity{}
-		env.db.First(&todo, id)
-		env.db.Delete(&todo)
+		env.db.Delete(&todoItem)
 		io.WriteString(w, `{"deleted": true}`)
 	}
-}
-
-func (env *Env) get(w http.ResponseWriter, r *http.Request) {
-	allTodoItems, err := models.GetAll(env.db)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(err)
-	}
-	log.Info("Get all TodoItems count: %d", allTodoItems)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(allTodoItems)
-}
-
-func (env *Env) getCompleted(w http.ResponseWriter, r *http.Request) {
-	log.Info("Get completed TodoItems")
-	completedTodoItems, err := models.GetByCompletionStatus(env.db, true)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(err)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(completedTodoItems)
-}
-
-func (env *Env) getIncomplete(w http.ResponseWriter, r *http.Request) {
-	log.Info("Get Incomplete TodoItems")
-	incompleteTodoItems, err := models.GetByCompletionStatus(env.db, false)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(err)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(incompleteTodoItems)
 }
