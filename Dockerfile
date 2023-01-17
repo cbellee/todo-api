@@ -1,7 +1,7 @@
 FROM golang:1.19.3 AS build
 RUN mkdir /build
 WORKDIR /build
-COPY ./src/ .
+COPY ./api/ .
 RUN useradd -u 10001 scratchuser
 RUN apt update && apt -y install ca-certificates && mkdir /persist && chown scratchuser:scratchuser /persist && mkdir /keys && chown scratchuser:scratchuser /keys && chmod -R 0700 /keys
 
