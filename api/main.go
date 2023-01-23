@@ -20,12 +20,15 @@ import (
 	"gorm.io/gorm"
 )
 
+var (
+	dsn = os.Getenv("DSN")
+)
+
 type Env struct {
 	db *gorm.DB
 }
 
 func main() {
-	dsn := os.Getenv("DSN")
 	env := &Env{db: nil}
 
 	if strings.TrimSpace(dsn) == "" {
@@ -69,9 +72,22 @@ func main() {
 }
 
 func healthz(w http.ResponseWriter, r *http.Request) {
-	log.Info("API Health is OK")
-	w.Header().Set("Content-Type", "application/json")
-	io.WriteString(w, `{"alive": true}`)
+	// test SQL connection only if using a remote database
+	if strings.TrimSpace(dsn) != "" {
+		_, err := gorm.Open(sqlserver.Open(dsn), &gorm.Config{})
+		if err != nil {
+			log.Fatalf("Failed to open db with error: %v", err)
+			log.Info("API Health is degraded")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			io.WriteString(w, fmt.Sprintf(`{"alive": false, "error": %s}`, err))
+		}
+	} else {
+		log.Info("API Health is OK")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, `{"alive": true}`)
+	}
 }
 
 func init() {
