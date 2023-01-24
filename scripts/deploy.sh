@@ -1,8 +1,9 @@
 #!/bin/bash
 
-while getopts ":s" option; do
+while getopts ":s:t:" option; do
    case $option in
-      s) skipBuild=1; # use '-s' cmdline flag to skip the container build step
+      s) skipBuild=1;; # use '-s' cmdline flag to skip the container build step
+	  t) testApi=1;;
    esac
 done
 
@@ -61,4 +62,35 @@ APP_FQDN=`az deployment group show \
 --query properties.outputs.fqdn.value \
 --output tsv`
 
-curl "https://$APP_FQDN/api/todos"
+if [[ $testApi != 1 ]]; then
+	# list all todos
+	curl "https://$APP_FQDN/api/todos"
+
+	# add todos
+	curl "https://$APP_FQDN/api/todos" -X POST -d '{"description": "get some dog food"}'
+	curl "https://$APP_FQDN/api/todos" -X POST -d '{"description": "get some eggs"}'
+	curl "https://$APP_FQDN/api/todos" -X POST -d '{"description": "get some onions"}'
+	curl "https://$APP_FQDN/api/todos" -X POST -d '{"description": "get some milk"}'
+	curl "https://$APP_FQDN/api/todos" -X POST -d '{"description": "get some bread"}'
+	curl "https://$APP_FQDN/api/todos" -X POST -d '{"description": "get some cat food"}'
+
+	# list all todos
+	curl "https://$APP_FQDN/api/todos" | jq
+
+	# complete todo
+	curl "https://$APP_FQDN/api/todos/complete/1" -X PATCH
+
+	# list all completed todos
+	curl "https://$APP_FQDN/api/todos/completed" | jq
+
+	# list all incomplete todos
+	curl "https://$APP_FQDN/api/todos/incomplete" | jq
+
+	# delete todos
+	curl "https://$APP_FQDN/api/todos/1" -X DELETE | jq
+	curl "https://$APP_FQDN/api/todos/2" -X DELETE | jq
+	curl "https://$APP_FQDN/api/todos/3" -X DELETE | jq
+	curl "https://$APP_FQDN/api/todos/4" -X DELETE | jq
+	curl "https://$APP_FQDN/api/todos/5" -X DELETE | jq
+	curl "https://$APP_FQDN/api/todos/6" -X DELETE | jq
+fi

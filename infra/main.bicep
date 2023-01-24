@@ -145,7 +145,7 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
               periodSeconds: 15
               httpGet: {
                 port: int(apiPort)
-                path: 'healthz/liveness'
+                path: '/healthz/liveness'
               }
             }
           ]
@@ -168,7 +168,7 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
 }
 
 resource sqlFirewallRules 'Microsoft.Sql/servers/firewallRules@2022-05-01-preview' = {
-  name: '${sqlServerName}/aca-firewall-rule'
+  name: '${sqlServerName}/container-app-rule'
   dependsOn: [
     sql
   ]
