@@ -86,11 +86,7 @@ if [[ $testApi != 1 ]]; then
 	# list all incomplete todos
 	curl "https://$APP_FQDN/api/todos/incomplete" | jq
 
-	# delete todos
-	curl "https://$APP_FQDN/api/todos/1" -X DELETE | jq
-	curl "https://$APP_FQDN/api/todos/2" -X DELETE | jq
-	curl "https://$APP_FQDN/api/todos/3" -X DELETE | jq
-	curl "https://$APP_FQDN/api/todos/4" -X DELETE | jq
-	curl "https://$APP_FQDN/api/todos/5" -X DELETE | jq
-	curl "https://$APP_FQDN/api/todos/6" -X DELETE | jq
+	# delete todo
+	curl "https://$APP_FQDN/api/todos/11" -X DELETE | jq
+
 fi
