@@ -54,7 +54,7 @@ func main() {
 	log.Info("Starting ToDoList API Server")
 
 	router := mux.NewRouter()
-	router.HandleFunc(fmt.Sprintf("%s/healthz", funcPrefix), healthz).Methods("GET")
+	router.HandleFunc(fmt.Sprintf("%s/healthz/liveness", funcPrefix), healthz).Methods("GET")
 	router.HandleFunc(fmt.Sprintf("%s/todos", funcPrefix), env.getAll).Methods("GET")
 	router.HandleFunc(fmt.Sprintf("%s/todos/completed", funcPrefix), env.getCompleted).Methods("GET")
 	router.HandleFunc(fmt.Sprintf("%s/todos/incomplete", funcPrefix), env.getIncomplete).Methods("GET")
