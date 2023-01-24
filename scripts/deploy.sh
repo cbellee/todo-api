@@ -3,7 +3,7 @@
 while getopts ":s:t:" option; do
    case $option in
       s) skipBuild=1;; # use '-s' cmdline flag to skip the container build step
-	  t) testApi=1;;
+	  t) testApi=1;; # use '-t' cmdline flag to skip the api tests
    esac
 done
 
@@ -11,7 +11,6 @@ LOCATION='australiaeast'
 API_NAME='todolist'
 RG_NAME="$API_NAME-api-rg"
 SEMVER='0.1.0'
-# REV=$(git rev-parse --short HEAD)
 TAG="$SEMVER"
 API_IMAGE="$API_NAME-api:$TAG"
 API_PORT='8080'
