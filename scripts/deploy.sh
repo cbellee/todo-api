@@ -1,89 +1,64 @@
-# az extension add --name containerapp --upgrade
-# az provider register --namespace Microsoft.App
-# az provider register --namespace Microsoft.OperationalInsights
+#!/bin/bash
 
-RESOURCE_GROUP='aca-todo-api-rg'
+while getopts ":s" option; do
+   case $option in
+      s) skipBuild=1; # use '-s' cmdline flag to skip the container build step
+   esac
+done
+
 LOCATION='australiaeast'
-ACA_ENVIRONMENT='aca-todo-env'
-REGISTRY='acatodocbellee'
-IDENTITY='aca-todo-id'
-CONTAINER_APP_NAME='todo-api'
-WORKSPACE_NAME='aca-todo-api-wks'
-REVISION_ID=`git rev-parse --short HEAD`
+API_NAME='todolist'
+RG_NAME="$API_NAME-api-rg"
+SEMVER='0.1.0'
+REV=$(git rev-parse --short HEAD)
+TAG="$SEMVER-$REV"
+API_IMAGE="$API_NAME-api:$TAG"
+API_PORT='8080'
 
-az group create \
-  --name $RESOURCE_GROUP \
-  --location $LOCATION
+source ../.env
 
-WORKSPACE_ID=`az monitor log-analytics workspace create \
-  --resource-group $RESOURCE_GROUP \
-  --name $WORKSPACE_NAME \
-  --sku Standard \
-  --query customerId \
-  --output tsv`
+az group create --location $LOCATION --name $RG_NAME
 
-WORKSPACE_KEY=`az monitor log-analytics workspace get-shared-keys \
-  --resource-group $RESOURCE_GROUP \
-  --workspace-name $WORKSPACE_NAME \
-  --query primarySharedKey \
-  --output tsv`
+if [[ $skipBuild != 1 ]]; then
+	az deployment group create \
+		--resource-group $RG_NAME \
+		--name 'acr-deployment' \
+		--parameters anonymousPullEnabled=true \
+		--template-file ../infra/modules/acr.bicep
+fi
 
-az identity create \
-  --name $IDENTITY \
-  --resource-group $RESOURCE_GROUP
+ACR_NAME=$(az deployment group show --resource-group $RG_NAME --name 'acr-deployment' --query properties.outputs.acrName.value -o tsv)
+IMAGE_NAME="$ACR_NAME.azurecr.io/$API_IMAGE"
 
-IDENTITY_ID=`az identity show \
-  --resource-group $RESOURCE_GROUP \
-  --name $IDENTITY \
-  --query id \
-  --output tsv`
+if [[ $skipBuild != 1 ]]; then
+	cd ..
+	echo "IMAGE NAME: '$IMAGE_NAME'"
 
-PRINCIPAL_ID=`az identity show \
-  --resource-group $RESOURCE_GROUP \
-  --name $IDENTITY \
-  --query principalId \
-  --output tsv`
+	az acr login -n $ACR_NAME 
+	docker build -t $IMAGE_NAME \
+	-f ./Dockerfile .
 
-REGISTRY_ID=`az acr create \
- --name $REGISTRY \
- --resource-group $RESOURCE_GROUP \
- --sku Standard \
- --query id \
- --output tsv`
+	docker push $IMAGE_NAME
 
-az role assignment create \
-  --assignee $PRINCIPAL_ID \
-  --scope $REGISTRY_ID \
-  --role acrpull
+	cd ./scripts
+fi
 
-az containerapp env create \
-  --name $ACA_ENVIRONMENT \
-  --resource-group $RESOURCE_GROUP \
-  --location $LOCATION \
-  --logs-workspace-id $WORKSPACE_ID \
-  --logs-workspace-key $WORKSPACE_KEY
+az deployment group create \
+--resource-group $RG_NAME \
+--name 'infra-deployment' \
+--template-file ../infra/main.bicep \
+--parameters location=$LOCATION \
+--parameters apiName=$API_NAME \
+--parameters apiPort=$API_PORT \
+--parameters acrName=$ACR_NAME \
+--parameters sqlAdminLoginName='dbadmin' \
+--parameters sqlAdminPassword=$SQL_ADMIN_PASSWORD \
+--parameters containerImage=$IMAGE_NAME
 
-# build and push container app
-IMAGE_NAME_TAG="$REGISTRY.azurecr.io/api:$REVISION_ID"
-az acr build -t $IMAGE_NAME_TAG --registry $REGISTRY .
+APP_FQDN=`az deployment group show \
+--resource-group $RG_NAME \
+--name 'infra-deployment' \
+--query properties.outputs.fqdn.value \
+--output tsv`
 
-APP_FQDN=`az containerapp create \
-  --name $CONTAINER_APP_NAME \
-  --resource-group $RESOURCE_GROUP \
-  --environment $ACA_ENVIRONMENT \
-  --image $IMAGE_NAME_TAG \
-  --target-port 8080 \
-  --ingress 'external' \
-  --user-assigned $IDENTITY_ID \
-  --registry-identity $IDENTITY_ID \
-  --registry-server "$REGISTRY.azurecr.io" \
-  --query properties.configuration.ingress.fqdn \
-  --output tsv`
-
-# list todos
-curl https://$APP_FQDN/api/todos
-
-# add todos
-curl https://$APP_FQDN/api/todos -X POST -d '{"description":"get some milk"}'
-curl https://$APP_FQDN/api/todos -X POST -d '{"description":"get some bread"}'
-curl https://$APP_FQDN/api/todos -X POST -d '{"description":"get some cheese"}'
+curl "https://$APP_FQDN/api/todos"

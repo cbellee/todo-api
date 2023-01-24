@@ -43,7 +43,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2022-07-01' = {
       {
         name: 'aca-infra-subnet'
         properties: {
-          addressPrefix: '10.10.1.0/22'
+          addressPrefix: '10.10.0.0/22'
         }
       }
     ]
