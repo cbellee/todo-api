@@ -11,8 +11,8 @@ LOCATION='australiaeast'
 API_NAME='todolist'
 RG_NAME="$API_NAME-api-rg"
 SEMVER='0.1.0'
-REV=$(git rev-parse --short HEAD)
-TAG="$SEMVER-$REV"
+# REV=$(git rev-parse --short HEAD)
+TAG="$SEMVER"
 API_IMAGE="$API_NAME-api:$TAG"
 API_PORT='8080'
 
@@ -62,7 +62,7 @@ APP_FQDN=`az deployment group show \
 --query properties.outputs.fqdn.value \
 --output tsv`
 
-if [[ $testApi != 1 ]]; then
+if [[ $testApi == 1 ]]; then
 	# list all todos
 	curl "https://$APP_FQDN/api/todos"
 

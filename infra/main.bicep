@@ -145,7 +145,7 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
               periodSeconds: 15
               httpGet: {
                 port: int(apiPort)
-                path: '/healthz/liveness'
+                path: '/api/healthz/liveness'
               }
             }
           ]

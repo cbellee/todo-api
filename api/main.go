@@ -82,6 +82,10 @@ func healthz(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			io.WriteString(w, fmt.Sprintf(`{"alive": false, "error": %s}`, err))
 		}
+		log.Info("API Health is OK")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		io.WriteString(w, `{"alive": true}`)
 	} else {
 		log.Info("API Health is OK")
 		w.Header().Set("Content-Type", "application/json")
