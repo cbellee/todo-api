@@ -12,14 +12,13 @@ param tags object = {
 }
 
 var affix = uniqueString(resourceGroup().id)
-var containerAppEnvName = 'app-env-vnet-${affix}'
+var containerAppEnvName = 'app-env-external-vnet-${affix}'
 var acrLoginServer = '${acrName}.azurecr.io'
 var acrAdminPassword = listCredentials(acr.id, '2021-12-01-preview').passwords[0].value
 var workspaceName = 'wks-${affix}'
 var sqlServerName = 'sql-server-${affix}'
 var sqlDbName = 'todo-list-db'
-var aiName = 'ai-${affix}'
-var vnetName = 'vnet-${affix}'
+var vnetName = 'vnet-aca-${affix}'
 
 var vnetConfig = {
   internal: false
@@ -43,18 +42,10 @@ resource vnet 'Microsoft.Network/virtualNetworks@2022-07-01' = {
       {
         name: 'aca-infra-subnet'
         properties: {
-          addressPrefix: '10.10.0.0/22'
+          addressPrefix: '10.10.8.0/21'
         }
       }
     ]
-  }
-}
-
-module aiModule 'modules/ai.bicep' = {
-  name: 'module-ai'
-  params: {
-    location: location
-    aiName: aiName
   }
 }
 
@@ -87,11 +78,9 @@ module containerAppEnvModule './modules/cappenv.bicep' = {
   params: {
     name: containerAppEnvName
     location: location
-    isInternal: false
     vnetConfig: vnetConfig
     tags: tags
     wksSharedKey: wksModule.outputs.workspaceSharedKey
-    aiKey: aiModule.outputs.aiKey
     wksCustomerId: wksModule.outputs.workspaceCustomerId
   }
 }
@@ -178,4 +167,16 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
   }
 }
 
+resource sqlFirewallRules 'Microsoft.Sql/servers/firewallRules@2022-05-01-preview' = {
+  name: '${sqlServerName}/aca-firewall-rule'
+  dependsOn: [
+    sql
+  ]
+  properties: {
+    startIpAddress: todoListApi.properties.outboundIpAddresses[0]
+    endIpAddress: todoListApi.properties.outboundIpAddresses[0]
+  }
+}
+
 output fqdn string = todoListApi.properties.configuration.ingress.fqdn
+output egressIp string = todoListApi.properties.outboundIpAddresses[0]

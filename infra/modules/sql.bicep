@@ -29,3 +29,4 @@ resource sqlDb 'Microsoft.Sql/servers/databases@2022-05-01-preview' = {
 }
 
 output cxnString string = 'Server=tcp:${sqlserver.properties.fullyQualifiedDomainName},1433;Initial Catalog=${sqlDbName};Persist Security Info=False;User ID=${adminLoginName};Password=${adminLoginPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
+output name string  = sqlserver.name
