@@ -56,8 +56,8 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc(fmt.Sprintf("%s/healthz/liveness", funcPrefix), healthz).Methods("GET")
 	router.HandleFunc(fmt.Sprintf("%s/todos", funcPrefix), env.getAll).Methods("GET")
-	//router.HandleFunc(fmt.Sprintf("%s/todos/completed", funcPrefix), env.getCompleted).Methods("GET")
-	//router.HandleFunc(fmt.Sprintf("%s/todos/incomplete", funcPrefix), env.getIncomplete).Methods("GET")
+	router.HandleFunc(fmt.Sprintf("%s/todos/completed", funcPrefix), env.getCompleted).Methods("GET")
+	router.HandleFunc(fmt.Sprintf("%s/todos/incomplete", funcPrefix), env.getIncomplete).Methods("GET")
 	router.HandleFunc(fmt.Sprintf("%s/todos/{id}", funcPrefix), env.getById).Methods("GET")
 	router.HandleFunc(fmt.Sprintf("%s/todos", funcPrefix), env.create).Methods("POST")
 	router.HandleFunc(fmt.Sprintf("%s/todos/{id}", funcPrefix), env.update).Methods("PATCH")
@@ -125,7 +125,7 @@ func (env *Env) getById(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(todoItem)
 }
 
-/* func (env *Env) getCompleted(w http.ResponseWriter, r *http.Request) {
+func (env *Env) getCompleted(w http.ResponseWriter, r *http.Request) {
 	log.Info("Get completed TodoItems")
 	completedTodoItems, err := models.GetByCompletionStatus(env.db, true)
 	fmt.Print(completedTodoItems)
@@ -146,7 +146,7 @@ func (env *Env) getIncomplete(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(incompleteTodoItems)
-} */
+}
 
 func (env *Env) create(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
