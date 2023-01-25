@@ -139,13 +139,13 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
           }
           probes: [
             {
-              type: 'Liveness'
+              type: 'Readiness'
               initialDelaySeconds: 15
               failureThreshold: 3
               periodSeconds: 15
               httpGet: {
                 port: int(apiPort)
-                path: '/api/healthz/liveness'
+                path: '/api/healthz/readiness'
               }
             }
           ]

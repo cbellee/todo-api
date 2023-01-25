@@ -54,7 +54,8 @@ func main() {
 	log.Info("Starting ToDoList API Server")
 
 	router := mux.NewRouter()
-	router.HandleFunc(fmt.Sprintf("%s/healthz/liveness", funcPrefix), healthz).Methods("GET")
+	router.HandleFunc(fmt.Sprintf("%s/healthz/readiness", funcPrefix), readiness).Methods("GET")
+	router.HandleFunc(fmt.Sprintf("%s/healthz/liveness", funcPrefix), liveness).Methods("GET")
 	router.HandleFunc(fmt.Sprintf("%s/todos", funcPrefix), env.getAll).Methods("GET")
 	router.HandleFunc(fmt.Sprintf("%s/todos/completed", funcPrefix), env.getCompleted).Methods("GET")
 	router.HandleFunc(fmt.Sprintf("%s/todos/incomplete", funcPrefix), env.getIncomplete).Methods("GET")
@@ -71,13 +72,13 @@ func main() {
 	http.ListenAndServe(listenAddr, handler)
 }
 
-func healthz(w http.ResponseWriter, r *http.Request) {
+func readiness(w http.ResponseWriter, r *http.Request) {
 	// test SQL connection only if using a remote database
 	if strings.TrimSpace(dsn) != "" {
 		_, err := gorm.Open(sqlserver.Open(dsn), &gorm.Config{})
 		if err != nil {
 			log.Fatalf("Failed to open db with error: %v", err)
-			log.Info("API Health is degraded")
+			log.Info("API dependencies are degraded")
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			io.WriteString(w, fmt.Sprintf(`{"alive": false, "error": %s}`, err))
@@ -85,6 +86,13 @@ func healthz(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	log.Info("API dependencies are OK")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	io.WriteString(w, `{"alive": true}`)
+}
+
+func liveness(w http.ResponseWriter, r *http.Request) {
 	log.Info("API Health is OK")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
