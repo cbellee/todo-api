@@ -3,6 +3,7 @@ param sqlServerName string
 param sqlDbName string
 param adminLoginName string = 'dbadmin'
 param adminLoginPassword string
+param sku string = 'Basic'
 
 resource sqlserver 'Microsoft.Sql/servers@2022-05-01-preview' = {
   name: sqlServerName
@@ -24,7 +25,7 @@ resource sqlDb 'Microsoft.Sql/servers/databases@2022-05-01-preview' = {
   location: location
   parent: sqlserver
   sku: {
-    name: 'Basic'
+    name: sku
   }
 }
 

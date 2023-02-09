@@ -4,7 +4,11 @@ param apiName string = 'todolist'
 param apiPort string = '8080'
 param containerImage string
 param sqlAdminLoginName string = 'dbadmin'
-param sqlAdminPassword string
+param fileShareName string = 'telegraf-share'
+param storageAccountKey string
+param storageNameMount string = 'storage-mount'
+param mountPath string = '/etc/telegraf'
+param grafanaRegion string = 'australiaeast'
 
 param tags object = {
   environment: 'dev'
@@ -12,6 +16,7 @@ param tags object = {
 }
 
 var affix = uniqueString(resourceGroup().id)
+var storageAccountName = 'stor${affix}'
 var containerAppEnvName = 'app-env-external-vnet-${affix}'
 var acrLoginServer = '${acrName}.azurecr.io'
 var acrAdminPassword = listCredentials(acr.id, '2021-12-01-preview').passwords[0].value
@@ -19,6 +24,8 @@ var workspaceName = 'wks-${affix}'
 var sqlServerName = 'sql-server-${affix}'
 var sqlDbName = 'todo-list-db'
 var vnetName = 'vnet-aca-${affix}'
+var sqlAdminLoginPassword = '${affix}-53058255-87EC-42DC-B645-DE1A61DBEB48'
+var volumeName = 'azure-file-volume'
 
 var vnetConfig = {
   internal: false
@@ -59,6 +66,7 @@ module wksModule 'modules/wks.bicep' = {
     location: location
     name: workspaceName
     tags: tags
+    grafanaRegion: grafanaRegion
   }
 }
 
@@ -66,7 +74,7 @@ module sql 'modules/sql.bicep' = {
   name: 'module-sql'
   params: {
     adminLoginName: sqlAdminLoginName
-    adminLoginPassword: sqlAdminPassword
+    adminLoginPassword: sqlAdminLoginPassword
     location: location
     sqlDbName: sqlDbName
     sqlServerName: sqlServerName
@@ -82,101 +90,46 @@ module containerAppEnvModule './modules/cappenv.bicep' = {
     tags: tags
     wksSharedKey: wksModule.outputs.workspaceSharedKey
     wksCustomerId: wksModule.outputs.workspaceCustomerId
+    storageAccountName: storageAccountName
+    shareName: fileShareName
+    storageAccountKey: storageAccountKey
+    storageNameMount: storageNameMount
   }
 }
 
-resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
-  name: apiName
-  location: location
-  tags: tags
-  identity: {
-    type: 'SystemAssigned'
-  }
-  dependsOn: [
-    containerAppEnvModule
-  ]
-  properties: {
-    configuration: {
-      activeRevisionsMode: 'multiple'
-      secrets: [
-        {
-          name: 'registry-password'
-          value: acrAdminPassword
-        }
-        {
-          name: 'sql-cxn-string'
-          value: sql.outputs.cxnString
-        }
-      ]
-      registries: [
-        {
-          passwordSecretRef: 'registry-password'
-          server: acrLoginServer
-          username: acr.name
-        }
-      ]
-      ingress: {
-        external: true
-        targetPort: int(apiPort)
-        traffic: [
-          {
-            latestRevision: true
-            weight: 100
-          }
-        ]
-        transport: 'http'
-      }
-    }
+module api 'modules/app.bicep' = {
+  name: 'module-api'
+  params: {
+    acrAdminPassword: acrAdminPassword
+    acrLoginServer: acrLoginServer
+    acrName: acr.name
+    apiName: apiName
+    apiPort: apiPort
+    containerImage: containerImage
+    location: location
     managedEnvironmentId: containerAppEnvModule.outputs.id
-    template: {
-      containers: [
-        {
-          image: containerImage
-          name: apiName
-          resources: {
-            cpu: '0.25'
-            memory: '0.5Gi'
-          }
-          probes: [
-            {
-              type: 'Readiness'
-              initialDelaySeconds: 15
-              failureThreshold: 3
-              periodSeconds: 15
-              httpGet: {
-                port: int(apiPort)
-                path: '/api/healthz/readiness'
-              }
-            }
-          ]
-          env: [
-            {
-              name: 'DSN'
-              secretRef: 'sql-cxn-string'
-            }
-          ]
-        }
-      ]
-      scale: {
-        minReplicas: 1
-        maxReplicas: 10
-        rules: [
-        ]
-      }
-    }
+    sqlCxnString: sql.outputs.cxnString
+    storageAccountKey: storageAccountKey
+    storageNameMount: storageNameMount
+    volumeName: volumeName
+    mountPath: mountPath
+    tags: tags
   }
 }
 
 resource sqlFirewallRules 'Microsoft.Sql/servers/firewallRules@2022-05-01-preview' = {
   name: '${sqlServerName}/container-app-rule'
   dependsOn: [
+    api
     sql
   ]
   properties: {
-    startIpAddress: todoListApi.properties.outboundIpAddresses[0]
-    endIpAddress: todoListApi.properties.outboundIpAddresses[0]
+    startIpAddress: api.outputs.ipAddress
+    endIpAddress: api.outputs.ipAddress
   }
 }
 
-output fqdn string = todoListApi.properties.configuration.ingress.fqdn
-output egressIp string = todoListApi.properties.outboundIpAddresses[0]
+
+output fqdn string = api.outputs.fqdn
+output egressIp string = api.outputs.ipAddress
+output sqlAdminLoginPassword string = sqlAdminLoginPassword

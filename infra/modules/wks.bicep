@@ -2,6 +2,7 @@ param location string = resourceGroup().location
 param name string
 param tags object
 param retentionInDays int = 30
+param grafanaRegion string 
 
 @allowed([
   'Standard'
@@ -21,6 +22,33 @@ resource wks 'Microsoft.OperationalInsights/workspaces@2021-06-01' = {
   }
 }
 
-output workspaceId string = wks.id 
+resource azureMonitorWorkspace 'Microsoft.Monitor/accounts@2021-06-03-preview' = {
+  name: wks.name
+  location: location
+  properties: {
+  }
+}
+
+resource grafana 'Microsoft.Dashboard/grafana@2022-08-01' = {
+  name: wks.name
+  location: grafanaRegion
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    zoneRedundancy: 'Disabled'
+    apiKey: 'Disabled'
+    deterministicOutboundIP: 'Disabled'
+    grafanaIntegrations: {
+      azureMonitorWorkspaceIntegrations: [
+        {
+          azureMonitorWorkspaceResourceId: azureMonitorWorkspace.id
+        }
+      ]
+    }
+  }
+}
+
+output workspaceId string = wks.id
 output workspaceSharedKey string = wks.listKeys().primarySharedKey
 output workspaceCustomerId string = wks.properties.customerId
