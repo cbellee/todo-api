@@ -6,9 +6,11 @@ param tags object
 param vnetConfig object
 param isZoneRedundant bool = false
 param storageAccountName string
-param storageAccountKey string
 param storageNameMount string
 param shareName string
+
+@secure()
+param storageAccountKey string
 
 resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-03-01' = {
   location: location

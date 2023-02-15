@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -28,7 +29,14 @@ import (
 )
 
 var (
-	dsn = os.Getenv("DSN")
+	dsn               = os.Getenv("DSN")
+	funcPrefix        = "/api"
+	listenAddr        = ":8080"
+	metricsListenAddr = ":8081"
+	maxIdleDbCxns     = 5
+	maxOpenDbCxns     = 10
+
+	wg sync.WaitGroup
 
 	getOperationsProcessed = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "todoapi_get_total",
@@ -66,6 +74,8 @@ type Env struct {
 }
 
 func main() {
+	defer wg.Done()
+
 	logger := logger.New(
 		logrus.NewWriter(),
 		logger.Config{
@@ -91,6 +101,15 @@ func main() {
 			log.Errorf("Failed to open remote db with error: '%v'", err)
 		}
 
+		sqlDB, err := db.DB()
+		if err != nil {
+			log.Errorf("Failed to get sqlDB to configure Connection pool options with error: '%v'", err)
+		}
+
+		sqlDB.SetMaxIdleConns(maxIdleDbCxns)
+		sqlDB.SetMaxOpenConns(maxOpenDbCxns)
+		sqlDB.SetConnMaxLifetime(time.Hour)
+
 		env = &Env{db: db}
 	}
 
@@ -100,7 +119,7 @@ func main() {
 		RefreshInterval: 15,            // Refresh metrics interval (default 15 seconds)
 		PushAddr:        "",            // push metrics if `PushAddr` configured
 		StartServer:     false,         // start http server to expose metrics
-		HTTPServerPort:  8080,          // configure http server port, default port 8080 (if you have configured multiple instances, only the first `HTTPServerPort` will be used to start server)
+		HTTPServerPort:  8081,          // configure http server port, default port 8080 (if you have configured multiple instances, only the first `HTTPServerPort` will be used to start server)
 		MetricsCollector: []gprom.MetricsCollector{
 			&gprom.MySQL{
 				VariableNames: []string{"Threads_running"},
@@ -109,16 +128,23 @@ func main() {
 	}))
 
 	env.db.Migrator().AutoMigrate(&models.TodoItemEntity{})
-	funcPrefix := "/api"
-	listenAddr := ":8080"
 
 	log.Info("Starting ToDoList API Server")
 
+	metricsRouter := mux.NewRouter()
+	metricsRouter.Use(prometheusMiddleware)
+	metricsRouter.HandleFunc("/metrics", promhttp.Handler().ServeHTTP).Methods("GET")
+
+	metricsHandler := cors.New(cors.Options{
+		AllowedMethods: []string{"GET", "POST", "DELETE", "PATCH", "OPTIONS"},
+	}).Handler(metricsRouter)
+
+	wg.Add(2)
+	go func() { http.ListenAndServe(metricsListenAddr, metricsHandler) }()
+
 	router := mux.NewRouter()
-	router.Use(prometheusMiddleware)
-	router.HandleFunc(fmt.Sprintf("%s/healthz/readiness", funcPrefix), readiness).Methods("GET")
-	router.HandleFunc(fmt.Sprintf("%s/healthz/liveness", funcPrefix), liveness).Methods("GET")
-	router.HandleFunc(fmt.Sprintf("%s/metrics", funcPrefix), promhttp.Handler().ServeHTTP).Methods("GET")
+	router.HandleFunc("/healthz/readiness", readiness).Methods("GET")
+	router.HandleFunc("/healthz/liveness", liveness).Methods("GET")
 	router.HandleFunc(fmt.Sprintf("%s/todos", funcPrefix), env.getAll).Methods("GET")
 	router.HandleFunc(fmt.Sprintf("%s/todos/completed", funcPrefix), env.getCompleted).Methods("GET")
 	router.HandleFunc(fmt.Sprintf("%s/todos/incomplete", funcPrefix), env.getIncomplete).Methods("GET")
@@ -132,7 +158,8 @@ func main() {
 		AllowedMethods: []string{"GET", "POST", "DELETE", "PATCH", "OPTIONS"},
 	}).Handler(router)
 
-	http.ListenAndServe(listenAddr, handler)
+	go func() { http.ListenAndServe(listenAddr, handler) }()
+	wg.Wait()
 }
 
 func readiness(w http.ResponseWriter, r *http.Request) {
@@ -168,6 +195,7 @@ func init() {
 }
 
 func (env *Env) getAll(w http.ResponseWriter, r *http.Request) {
+	env.db.DB()
 	allTodoItems, err := models.GetAll(env.db)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")

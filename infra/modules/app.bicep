@@ -5,31 +5,31 @@ param apiPort string
 param containerImage string
 param acrName string
 param managedEnvironmentId string
+
+@secure()
 param storageAccountKey string
-param telegrafImage string = 'telegraf:1.23.4'
-param telegrafApiPort string = '8086'
-param acrLoginServer string
+
+@secure()
 param acrAdminPassword string
+
+param telegrafImage string = 'telegraf:1.23.4'
+param acrLoginServer string
 param sqlCxnString string
 param storageNameMount string
 param volumeName string
 param mountPath string
+param userPrincipalId string
+param grafanaPrincipalId string
+param concurrentRequestsScaleRule string = '50'
 
-/* resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2022-01-31-preview' = {
-  name: 'todolist-msi'
-  location: location
-}
- */
+var azMonMetricsPublisherRoleDefinitionID = '3913510d-42f4-4e42-8a64-420c390055eb'
+var azMonDataReaderRoleDefinitionID = 'b0d8363b-8ddd-447d-831f-62ca05bff136'
+var grafanaAdminRoleDefinitionID = '22926164-76b3-42b3-bc55-97df8dab3e41'
+
 resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
   name: apiName
   location: location
   tags: tags
-  /*   identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${uami.id}': {}
-    }
-  } */
   identity: {
     type: 'SystemAssigned'
   }
@@ -94,7 +94,7 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
               periodSeconds: 15
               httpGet: {
                 port: int(apiPort)
-                path: '/api/healthz/readiness'
+                path: '/healthz/readiness'
               }
             }
             {
@@ -104,7 +104,7 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
               periodSeconds: 15
               httpGet: {
                 port: int(apiPort)
-                path: '/api/healthz/liveness'
+                path: '/healthz/liveness'
               }
             }
           ]
@@ -129,32 +129,60 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
             }
           ]
           env: [
-            {
-              name: 'RESOURCE_ID'
-              value: '/subscriptions/${subscription().subscriptionId}/resourceGroups/${resourceGroup().name}/providers/Microsoft.App/containerapps/${apiName}'
-            }
-            {
-              name: 'LOCATION'
-              value: location
-            }
-            {
-              name: 'INSTANCE'
-              value: apiName
-            }
-            {
-              name: 'PROMETHEUS_URL'
-              value: 'http://localhost:8080/api/metrics'
-            }
           ]
         }
       ]
       scale: {
         minReplicas: 1
-        maxReplicas: 10
+        maxReplicas: 20
         rules: [
+          {
+            name: 'http-scale-rule'
+            http: {
+              metadata: {
+                concurrentRequests: concurrentRequestsScaleRule
+              }
+            }
+          }
         ]
       }
     }
+  }
+}
+
+module azMonMetricsPublisherRbac 'rbac-resourcegroup-scope.bicep' = {
+  name: 'module-azMonMetricsPublisherRbac'
+  params: {
+    principalId: todoListApi.identity.principalId
+    roleDefinitionID: azMonMetricsPublisherRoleDefinitionID
+    principalType: 'ServicePrincipal'
+  }
+}
+
+module azMonDataReader 'rbac-resourcegroup-scope.bicep' = {
+  name: 'module-azMonDataReaderRbac'
+  params: {
+    principalId: userPrincipalId
+    roleDefinitionID: azMonDataReaderRoleDefinitionID
+    principalType: 'User'
+  }
+}
+
+module grafanaAdminRole 'rbac-resourcegroup-scope.bicep' = {
+  name: 'module-grafanaAdminRbac'
+  params: {
+    principalId: userPrincipalId
+    roleDefinitionID: grafanaAdminRoleDefinitionID
+    principalType: 'User'
+  }
+}
+
+module grafanaReadAccessLogAnalyticsRole 'rbac-resourcegroup-scope.bicep' = {
+  name: 'module-grafanaLogAnalyticsReadRbac'
+  params: {
+    principalId: grafanaPrincipalId
+    roleDefinitionID: grafanaAdminRoleDefinitionID
+    principalType: 'ServicePrincipal'
   }
 }
 

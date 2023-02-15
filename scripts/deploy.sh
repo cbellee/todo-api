@@ -7,50 +7,63 @@ while getopts "st" option; do
    esac
 done
 
-LOCATION='southeastasia'
-API_NAME='todolist4'
-RG_NAME="$API_NAME-api-rg"
+export LOCATION='westeurope'
+API_NAME='todolist-cbellee'
+RG_NAME="$API_NAME-rg"
 API_PORT='8080'
-SEMVER='0.2.0'
+METRICS_PORT='8081'
+SEMVER='0.1.0'
+USER_PRINCIPAL_ID=`az ad signed-in-user show --query id --output tsv`
+export METRICS_ENDPOINT="http://localhost:${METRICS_PORT}/metrics"
+SUBSCRIPTION_ID=`az account show --query id -o tsv`
+export RESOURCE_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RG_NAME}/providers/Microsoft.App/containerapps/${API_NAME}"
 
 az group create --location $LOCATION --name $RG_NAME
 
 if [[ $skipBuild != 1 ]]; then
 	az deployment group create \
-		--resource-group $RG_NAME \
-		--name 'acr-deployment' \
-		--parameters anonymousPullEnabled=true \
-		--template-file ../infra/modules/acr.bicep
+	--resource-group $RG_NAME \
+	--name 'acr-deployment' \
+	--parameters anonymousPullEnabled=true \
+	--template-file ../infra/modules/acr.bicep
 fi
 
 # create storage account & fileshare to store 'telegraf.conf'
-STORAGE_ACCOUNT_NAME=`az deployment group create \
-	--resource-group $RG_NAME \
-	--name 'storage-deployment' \
-	--template-file ../infra/modules/stor.bicep \
-	--parameters location=$LOCATION \
-	--parameters fileShareName='telegraf-share' \
-	--query properties.outputs.storageAccountName.value --output tsv`
+az deployment group create \
+--resource-group $RG_NAME \
+--name 'storage-deployment' \
+--template-file ../infra/modules/stor.bicep \
+--parameters location=$LOCATION \
+--parameters fileShareName='telegraf-share'
+
+STORAGE_ACCOUNT_NAME=`az deployment group show \
+--resource-group $RG_NAME \
+--name 'storage-deployment' \
+--query properties.outputs.storageAccountName.value \
+--output tsv`
 
 SHARE_NAME=`az deployment group show \
-	--resource-group $RG_NAME \
-	--name 'storage-deployment' \
-	--query properties.outputs.shareName.value \
-	--output tsv`
+--resource-group $RG_NAME \
+--name 'storage-deployment' \
+--query properties.outputs.shareName.value \
+--output tsv`
 
 STORAGE_ACCOUNT_KEY=`az deployment group show \
-	--resource-group $RG_NAME \
-	--name 'storage-deployment' \
-	--query properties.outputs.storageAccountKey.value \
-	--output tsv`
+--resource-group $RG_NAME \
+--name 'storage-deployment' \
+--query properties.outputs.storageAccountKey.value \
+--output tsv`
 
-# upload 'telegraph.conf' to file share
+# substitute variables in telegraf.conf.template to new file 'telegraf.conf'
+envsubst < telegraf.conf.template > telegraf.conf
+
+# upload 'telegraph.conf' to Azure file share
 az storage file upload \
-    --account-name $STORAGE_ACCOUNT_NAME \
-	--account-key $STORAGE_ACCOUNT_KEY \
-    --share-name $SHARE_NAME \
-    --source "telegraf.conf" \
-    --path "./telegraf.conf"
+--account-name $STORAGE_ACCOUNT_NAME \
+--share-name $SHARE_NAME \
+--account-key "$STORAGE_ACCOUNT_KEY" \
+--source "./telegraf.conf" \
+--path "telegraf.conf"
 
 ACR_NAME=$(az deployment group show --resource-group $RG_NAME --name 'acr-deployment' --query properties.outputs.acrName.value -o tsv)
 IMAGE="$ACR_NAME.azurecr.io/$API_NAME-api:v$SEMVER"
@@ -60,27 +73,26 @@ if [[ $skipBuild != 1 ]]; then
 	cd ..
 
 	az acr login -n $ACR_NAME 
-
 	echo "IMAGE NAME: '$IMAGE'"
 	docker build -t $IMAGE -f ./Dockerfile .
-
 	docker push $IMAGE
 
 	cd ./scripts
 fi
 
 az deployment group create \
-	--resource-group $RG_NAME \
-	--name 'app-deployment' \
-	--template-file ../infra/main.bicep \
-	--parameters location=$LOCATION \
-	--parameters apiName=$API_NAME \
-	--parameters apiPort=$API_PORT \
-	--parameters acrName=$ACR_NAME \
-	--parameters sqlAdminLoginName='dbadmin' \
-	--parameters containerImage=$IMAGE \
-	--parameters storageAccountKey=$STORAGE_ACCOUNT_KEY \
-	--parameters fileShareName=$SHARE_NAME
+--resource-group $RG_NAME \
+--name 'app-deployment' \
+--template-file ../infra/main.bicep \
+--parameters location=$LOCATION \
+--parameters apiName=$API_NAME \
+--parameters apiPort=$API_PORT \
+--parameters acrName=$ACR_NAME \
+--parameters sqlAdminLoginName='dbadmin' \
+--parameters containerImage=$IMAGE \
+--parameters storageAccountKey=$STORAGE_ACCOUNT_KEY \
+--parameters fileShareName=$SHARE_NAME \
+--parameters userPrincipalId=$USER_PRINCIPAL_ID
 
 APP_FQDN=`az deployment group show \
 --resource-group $RG_NAME \

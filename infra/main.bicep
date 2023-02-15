@@ -5,11 +5,13 @@ param apiPort string = '8080'
 param containerImage string
 param sqlAdminLoginName string = 'dbadmin'
 param fileShareName string = 'telegraf-share'
+
+@secure()
 param storageAccountKey string
+
 param storageNameMount string = 'storage-mount'
 param mountPath string = '/etc/telegraf'
-param grafanaRegion string = 'australiaeast'
-
+param userPrincipalId string
 param tags object = {
   environment: 'dev'
   costcode: '1234567890'
@@ -17,15 +19,18 @@ param tags object = {
 
 var affix = uniqueString(resourceGroup().id)
 var storageAccountName = 'stor${affix}'
+var altName = 'alt-${affix}'
 var containerAppEnvName = 'app-env-external-vnet-${affix}'
 var acrLoginServer = '${acrName}.azurecr.io'
 var acrAdminPassword = listCredentials(acr.id, '2021-12-01-preview').passwords[0].value
 var workspaceName = 'wks-${affix}'
+var azMonName = 'azm-${affix}'
 var sqlServerName = 'sql-server-${affix}'
 var sqlDbName = 'todo-list-db'
 var vnetName = 'vnet-aca-${affix}'
-var sqlAdminLoginPassword = '${affix}-53058255-87EC-42DC-B645-DE1A61DBEB48'
+var sqlAdminLoginPassword = '${affix}-${guid(affix)}'
 var volumeName = 'azure-file-volume'
+var logAnalyticsReaderRoleID = '73c42c96-874c-492b-b04d-ab87d138a893'
 
 var vnetConfig = {
   internal: false
@@ -63,10 +68,10 @@ resource acr 'Microsoft.ContainerRegistry/registries@2021-12-01-preview' existin
 module wksModule 'modules/wks.bicep' = {
   name: 'module-wks'
   params: {
-    location: location
     name: workspaceName
+    azMonName: azMonName
+    location: location
     tags: tags
-    grafanaRegion: grafanaRegion
   }
 }
 
@@ -100,6 +105,7 @@ module containerAppEnvModule './modules/cappenv.bicep' = {
 module api 'modules/app.bicep' = {
   name: 'module-api'
   params: {
+    userPrincipalId: userPrincipalId
     acrAdminPassword: acrAdminPassword
     acrLoginServer: acrLoginServer
     acrName: acr.name
@@ -113,6 +119,7 @@ module api 'modules/app.bicep' = {
     storageNameMount: storageNameMount
     volumeName: volumeName
     mountPath: mountPath
+    grafanaPrincipalId: wksModule.outputs.grafanaPrincipalId
     tags: tags
   }
 }
@@ -129,6 +136,21 @@ resource sqlFirewallRules 'Microsoft.Sql/servers/firewallRules@2022-05-01-previe
   }
 }
 
+module azMonitorMetricsReaderRole './modules/rbac-subscription-scope.bicep' = {
+  name: 'module-azMonitorMetricsReadRbac'
+  scope: subscription()
+  params: {
+    principalId: wksModule.outputs.grafanaPrincipalId
+    roleDefinitionID: logAnalyticsReaderRoleID
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource azLoadTest 'Microsoft.LoadTestService/loadTests@2022-12-01' = {
+  name: altName
+  location: location
+  tags: tags
+}
 
 output fqdn string = api.outputs.fqdn
 output egressIp string = api.outputs.ipAddress
