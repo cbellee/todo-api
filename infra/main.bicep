@@ -31,6 +31,10 @@ var vnetName = 'vnet-aca-${affix}'
 var sqlAdminLoginPassword = '${affix}-${guid(affix)}'
 var volumeName = 'azure-file-volume'
 var logAnalyticsReaderRoleID = '73c42c96-874c-492b-b04d-ab87d138a893'
+var listenAddress = '8080'
+var metricsListenAddress = '8081'
+var maxIdleDbCxn = '5'
+var maxOpenDbCxn = '10'
 
 var vnetConfig = {
   internal: false
@@ -102,8 +106,8 @@ module containerAppEnvModule './modules/cappenv.bicep' = {
   }
 }
 
-module api 'modules/app.bicep' = {
-  name: 'module-api'
+module app 'modules/app.bicep' = {
+  name: 'module-app'
   params: {
     userPrincipalId: userPrincipalId
     acrAdminPassword: acrAdminPassword
@@ -121,18 +125,22 @@ module api 'modules/app.bicep' = {
     mountPath: mountPath
     grafanaPrincipalId: wksModule.outputs.grafanaPrincipalId
     tags: tags
+    listenAddress: listenAddress
+    metricsListenAddress: metricsListenAddress
+    maxIdleDbCxns: maxIdleDbCxn
+    maxOpenDbCxns: maxOpenDbCxn
   }
 }
 
 resource sqlFirewallRules 'Microsoft.Sql/servers/firewallRules@2022-05-01-preview' = {
   name: '${sqlServerName}/container-app-rule'
   dependsOn: [
-    api
+    app
     sql
   ]
   properties: {
-    startIpAddress: api.outputs.ipAddress
-    endIpAddress: api.outputs.ipAddress
+    startIpAddress: app.outputs.ipAddress
+    endIpAddress: app.outputs.ipAddress
   }
 }
 
@@ -152,6 +160,6 @@ resource azLoadTest 'Microsoft.LoadTestService/loadTests@2022-12-01' = {
   tags: tags
 }
 
-output fqdn string = api.outputs.fqdn
-output egressIp string = api.outputs.ipAddress
+output fqdn string = app.outputs.fqdn
+output egressIp string = app.outputs.ipAddress
 output sqlAdminLoginPassword string = sqlAdminLoginPassword

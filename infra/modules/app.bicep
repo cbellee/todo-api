@@ -21,6 +21,10 @@ param mountPath string
 param userPrincipalId string
 param grafanaPrincipalId string
 param concurrentRequestsScaleRule string = '50'
+param listenAddress string
+param metricsListenAddress string
+param maxIdleDbCxns string
+param maxOpenDbCxns string
 
 var azMonMetricsPublisherRoleDefinitionID = '3913510d-42f4-4e42-8a64-420c390055eb'
 var azMonDataReaderRoleDefinitionID = 'b0d8363b-8ddd-447d-831f-62ca05bff136'
@@ -110,8 +114,24 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
           ]
           env: [
             {
-              name: 'DSN'
+              name: 'DB_CXN'
               secretRef: 'sql-cxn-string'
+            }
+            {
+              name: 'LISTEN_ADDR'
+              value: listenAddress
+            }
+            {
+              name: 'METRICS_LISTEN_ADDR'
+              value: metricsListenAddress
+            }
+            {
+              name: 'MAX_IDLE_DB_CXNS'
+              value: maxIdleDbCxns
+            }
+            {
+              name: 'MAX_OPEN_DB_CXNS'
+              value: maxOpenDbCxns
             }
           ]
         }
