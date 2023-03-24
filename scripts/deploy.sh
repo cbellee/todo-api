@@ -18,7 +18,7 @@ az group create \
 WORKSPACE_ID=`az monitor log-analytics workspace create \
   --resource-group $RESOURCE_GROUP \
   --name $WORKSPACE_NAME \
-  --sku Standard \
+  --sku PerGB2018 \
   --query customerId \
   --output tsv`
 
