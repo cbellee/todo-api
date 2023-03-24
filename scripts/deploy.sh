@@ -8,7 +8,7 @@ while getopts "st" option; do
 done
 
 export LOCATION='westeurope'
-API_NAME='todolist-cbellee'
+API_NAME='todolist-telegraf-demo'
 RG_NAME="$API_NAME-rg"
 API_PORT='8080'
 METRICS_PORT='8081'
@@ -90,7 +90,7 @@ az deployment group create \
 --parameters acrName=$ACR_NAME \
 --parameters sqlAdminLoginName='dbadmin' \
 --parameters containerImage=$IMAGE \
---parameters storageAccountKey=$STORAGE_ACCOUNT_KEY \
+--parameters storageAccountName=$STORAGE_ACCOUNT_NAME \
 --parameters fileShareName=$SHARE_NAME \
 --parameters userPrincipalId=$USER_PRINCIPAL_ID
 

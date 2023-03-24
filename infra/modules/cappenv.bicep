@@ -29,13 +29,17 @@ resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-03-01' 
   tags: tags
 }
 
+resource storage 'Microsoft.Storage/storageAccounts@2022-09-01' existing = {
+  name: storageAccountName
+}
+
 resource cAppEnvStorage 'Microsoft.App/managedEnvironments/storages@2022-06-01-preview' = {
   name: storageNameMount
   parent: containerAppEnvironment
   properties: {
     azureFile: {
       accessMode: 'ReadOnly'
-      accountKey: storageAccountKey
+      accountKey: storage.listKeys(storage.apiVersion).keys[0].value
       accountName: storageAccountName
       shareName: shareName
     }

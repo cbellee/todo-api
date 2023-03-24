@@ -7,7 +7,7 @@ param sqlAdminLoginName string = 'dbadmin'
 param fileShareName string = 'telegraf-share'
 
 @secure()
-param storageAccountKey string
+param storageAccountName string
 
 param storageNameMount string = 'storage-mount'
 param mountPath string = '/etc/telegraf'
@@ -18,11 +18,11 @@ param tags object = {
 }
 
 var affix = uniqueString(resourceGroup().id)
-var storageAccountName = 'stor${affix}'
+var storageAccountKey = storage.listKeys().keys[0].value
 var altName = 'alt-${affix}'
 var containerAppEnvName = 'app-env-external-vnet-${affix}'
 var acrLoginServer = '${acrName}.azurecr.io'
-var acrAdminPassword = listCredentials(acr.id, '2021-12-01-preview').passwords[0].value
+var acrAdminPassword = acr.listCredentials(acr.apiVersion).passwords[0].value
 var workspaceName = 'wks-${affix}'
 var azMonName = 'azm-${affix}'
 var sqlServerName = 'sql-server-${affix}'
@@ -44,6 +44,14 @@ var vnetConfig = {
   dockerBridgeCidr: '10.1.0.1/16'
 }
 
+resource acr 'Microsoft.ContainerRegistry/registries@2021-12-01-preview' existing = {
+  name: acrName
+}
+
+resource storage 'Microsoft.Storage/storageAccounts@2022-09-01' existing = {
+  name: storageAccountName
+}
+
 resource vnet 'Microsoft.Network/virtualNetworks@2022-07-01' = {
   name: vnetName
   location: location
@@ -63,10 +71,6 @@ resource vnet 'Microsoft.Network/virtualNetworks@2022-07-01' = {
       }
     ]
   }
-}
-
-resource acr 'Microsoft.ContainerRegistry/registries@2021-12-01-preview' existing = {
-  name: acrName
 }
 
 module wksModule 'modules/wks.bicep' = {
