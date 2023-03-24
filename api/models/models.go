@@ -2,15 +2,19 @@ package models
 
 import (
 	"fmt"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
 type TodoItemEntity struct {
-	gorm.Model
-	Description string `json:"description"`
-	Completed   bool   `json:"completed"`
+	ID          uint      `gorm:"primarykey" json:"id"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+	DeletedAt   time.Time `gorm:"index" json:"deletedAt"`
+	Description string    `json:"description"`
+	Completed   bool      `json:"completed"`
 }
 
 type CreateOrUpdateTodoItem struct {

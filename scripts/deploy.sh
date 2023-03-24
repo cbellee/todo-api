@@ -1,89 +1,137 @@
-# az extension add --name containerapp --upgrade
-# az provider register --namespace Microsoft.App
-# az provider register --namespace Microsoft.OperationalInsights
+#!/bin/bash
 
-RESOURCE_GROUP='aca-todo-api-rg'
-LOCATION='australiaeast'
-ACA_ENVIRONMENT='aca-todo-env'
-REGISTRY='acatodocbellee'
-IDENTITY='aca-todo-id'
-CONTAINER_APP_NAME='todo-api'
-WORKSPACE_NAME='aca-todo-api-wks'
-REVISION_ID=`git rev-parse --short HEAD`
+while getopts "st" option; do
+   case $option in
+      s) skipBuild=1;; # use '-s' cmdline flag to skip the container build step
+	  t) testApi=1;; # use '-t' cmdline flag to skip the api tests
+   esac
+done
 
-az group create \
-  --name $RESOURCE_GROUP \
-  --location $LOCATION
+export LOCATION='westeurope'
+API_NAME='todolist-telegraf-demo'
+RG_NAME="$API_NAME-rg"
+API_PORT='8080'
+METRICS_PORT='8081'
+SEMVER='0.1.0'
+USER_PRINCIPAL_ID=`az ad signed-in-user show --query id --output tsv`
+export METRICS_ENDPOINT="http://localhost:${METRICS_PORT}/metrics"
+SUBSCRIPTION_ID=`az account show --query id -o tsv`
+export RESOURCE_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RG_NAME}/providers/Microsoft.App/containerapps/${API_NAME}"
 
-WORKSPACE_ID=`az monitor log-analytics workspace create \
-  --resource-group $RESOURCE_GROUP \
-  --name $WORKSPACE_NAME \
-  --sku PerGB2018 \
-  --query customerId \
-  --output tsv`
+az group create --location $LOCATION --name $RG_NAME
 
-WORKSPACE_KEY=`az monitor log-analytics workspace get-shared-keys \
-  --resource-group $RESOURCE_GROUP \
-  --workspace-name $WORKSPACE_NAME \
-  --query primarySharedKey \
-  --output tsv`
+if [[ $skipBuild != 1 ]]; then
+	az deployment group create \
+	--resource-group $RG_NAME \
+	--name 'acr-deployment' \
+	--parameters anonymousPullEnabled=true \
+	--template-file ../infra/modules/acr.bicep
+fi
 
-az identity create \
-  --name $IDENTITY \
-  --resource-group $RESOURCE_GROUP
+# create storage account & fileshare to store 'telegraf.conf'
+az deployment group create \
+--resource-group $RG_NAME \
+--name 'storage-deployment' \
+--template-file ../infra/modules/stor.bicep \
+--parameters location=$LOCATION \
+--parameters fileShareName='telegraf-share'
 
-IDENTITY_ID=`az identity show \
-  --resource-group $RESOURCE_GROUP \
-  --name $IDENTITY \
-  --query id \
-  --output tsv`
+STORAGE_ACCOUNT_NAME=`az deployment group show \
+--resource-group $RG_NAME \
+--name 'storage-deployment' \
+--query properties.outputs.storageAccountName.value \
+--output tsv`
 
-PRINCIPAL_ID=`az identity show \
-  --resource-group $RESOURCE_GROUP \
-  --name $IDENTITY \
-  --query principalId \
-  --output tsv`
+SHARE_NAME=`az deployment group show \
+--resource-group $RG_NAME \
+--name 'storage-deployment' \
+--query properties.outputs.shareName.value \
+--output tsv`
 
-REGISTRY_ID=`az acr create \
- --name $REGISTRY \
- --resource-group $RESOURCE_GROUP \
- --sku Standard \
- --query id \
- --output tsv`
+STORAGE_ACCOUNT_KEY=`az deployment group show \
+--resource-group $RG_NAME \
+--name 'storage-deployment' \
+--query properties.outputs.storageAccountKey.value \
+--output tsv`
 
-az role assignment create \
-  --assignee $PRINCIPAL_ID \
-  --scope $REGISTRY_ID \
-  --role acrpull
+# substitute variables in telegraf.conf.template to new file 'telegraf.conf'
+envsubst < telegraf.conf.template > telegraf.conf
 
-az containerapp env create \
-  --name $ACA_ENVIRONMENT \
-  --resource-group $RESOURCE_GROUP \
-  --location $LOCATION \
-  --logs-workspace-id $WORKSPACE_ID \
-  --logs-workspace-key $WORKSPACE_KEY
+# upload 'telegraph.conf' to Azure file share
+az storage file upload \
+--account-name $STORAGE_ACCOUNT_NAME \
+--share-name $SHARE_NAME \
+--account-key "$STORAGE_ACCOUNT_KEY" \
+--source "./telegraf.conf" \
+--path "telegraf.conf"
 
-# build and push container app
-IMAGE_NAME_TAG="$REGISTRY.azurecr.io/api:$REVISION_ID"
-az acr build -t $IMAGE_NAME_TAG --registry $REGISTRY .
+ACR_NAME=$(az deployment group show --resource-group $RG_NAME --name 'acr-deployment' --query properties.outputs.acrName.value -o tsv)
+IMAGE="$ACR_NAME.azurecr.io/$API_NAME-api:v$SEMVER"
 
-APP_FQDN=`az containerapp create \
-  --name $CONTAINER_APP_NAME \
-  --resource-group $RESOURCE_GROUP \
-  --environment $ACA_ENVIRONMENT \
-  --image $IMAGE_NAME_TAG \
-  --target-port 8080 \
-  --ingress 'external' \
-  --user-assigned $IDENTITY_ID \
-  --registry-identity $IDENTITY_ID \
-  --registry-server "$REGISTRY.azurecr.io" \
-  --query properties.configuration.ingress.fqdn \
-  --output tsv`
+if [[ $skipBuild != 1 ]]; then
 
-# list todos
-curl https://$APP_FQDN/api/todos
+	cd ..
 
-# add todos
-curl https://$APP_FQDN/api/todos -X POST -d '{"description":"get some milk"}'
-curl https://$APP_FQDN/api/todos -X POST -d '{"description":"get some bread"}'
-curl https://$APP_FQDN/api/todos -X POST -d '{"description":"get some cheese"}'
+	az acr login -n $ACR_NAME 
+	echo "IMAGE NAME: '$IMAGE'"
+	docker build -t $IMAGE -f ./Dockerfile .
+	docker push $IMAGE
+
+	cd ./scripts
+fi
+
+az deployment group create \
+--resource-group $RG_NAME \
+--name 'app-deployment' \
+--template-file ../infra/main.bicep \
+--parameters location=$LOCATION \
+--parameters apiName=$API_NAME \
+--parameters apiPort=$API_PORT \
+--parameters acrName=$ACR_NAME \
+--parameters sqlAdminLoginName='dbadmin' \
+--parameters containerImage=$IMAGE \
+--parameters storageAccountName=$STORAGE_ACCOUNT_NAME \
+--parameters fileShareName=$SHARE_NAME \
+--parameters userPrincipalId=$USER_PRINCIPAL_ID
+
+APP_FQDN=`az deployment group show \
+--resource-group $RG_NAME \
+--name 'app-deployment' \
+--query properties.outputs.fqdn.value \
+--output tsv`
+
+echo "APP_FQDN: $APP_FQDN"
+
+SQL_ADMIN_PASSWORD=`az deployment group show \
+--resource-group $RG_NAME \
+--name 'app-deployment' \
+--query properties.outputs.sqlAdminLoginPassword.value \
+--output tsv`
+
+echo "SQL_ADMIN_PASSWORD: $SQL_ADMIN_PASSWORD"
+
+if [[ $testApi == 1 ]]; then
+
+	# add todos
+	curl "https://$APP_FQDN/api/todos" -X POST -d '{"description": "get some dog food"}'
+	curl "https://$APP_FQDN/api/todos" -X POST -d '{"description": "get some eggs"}'
+	curl "https://$APP_FQDN/api/todos" -X POST -d '{"description": "get some onions"}'
+	curl "https://$APP_FQDN/api/todos" -X POST -d '{"description": "get some milk"}'
+	curl "https://$APP_FQDN/api/todos" -X POST -d '{"description": "get some bread"}'
+	curl "https://$APP_FQDN/api/todos" -X POST -d '{"description": "get some cat food"}'
+
+	# list all todos
+	curl "https://$APP_FQDN/api/todos" | jq
+
+	# complete a todo
+	curl "https://$APP_FQDN/api/todos/complete/1" -X PATCH
+
+	# list all completed todos
+	curl "https://$APP_FQDN/api/todos/completed" | jq
+
+	# list all incomplete todos
+	curl "https://$APP_FQDN/api/todos/incomplete" | jq
+
+	# delete a todo
+	curl "https://$APP_FQDN/api/todos/1" -X DELETE | jq
+fi

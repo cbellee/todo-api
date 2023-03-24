@@ -1,206 +1,132 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"os"
-	"strconv"
 	"strings"
+	"sync"
+	"time"
+
+	handlers "todo-api/handlers"
+	models "todo-api/models"
+	utils "todo-api/utils"
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 
-	models "todo-api/models"
-
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 	"gorm.io/driver/sqlite"
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"gorm.io/plugin/opentelemetry/logging/logrus"
+	gprom "gorm.io/plugin/prometheus"
 )
 
-type Env struct {
-	db *gorm.DB
-}
+var (
+	dsn               = utils.GetEnvAsString("DB_CXN", "")
+	listenAddr        = utils.GetEnvAsString("LISTEN_ADDR", "8080")
+	metricsListenAddr = utils.GetEnvAsString("METRICS_LISTEN_ADDR", "8081")
+	maxIdleDbCxns     = utils.GetEnvAsInt("MAX_IDLE_DB_CXNS", 5)
+	maxOpenDbCxns     = utils.GetEnvAsInt("MAX_OPEN_DB_CXNS", 10)
+	wg                sync.WaitGroup
+)
 
-func main() {
-	dsn := os.Getenv("DSN")
-	env := &Env{db: nil}
-
+func initDb(dsn string, logger logger.Interface, maxIdleDbCxns int, maxOpenDbCxns int) (env *handlers.Env) {
 	if strings.TrimSpace(dsn) == "" {
 		log.Info("using local in memory SQLite database")
-		db, err := gorm.Open(sqlite.Open("file:memdb1?mode=memory&cache=shared"), &gorm.Config{})
+		db, err := gorm.Open(sqlite.Open("file:memdb1?mode=memory&cache=shared"), &gorm.Config{Logger: logger})
 		if err != nil {
 			log.Errorf("Failed to open local db with error: %v", err)
 		}
-		env = &Env{db: db}
+
+		env = &handlers.Env{Db: db}
 	} else {
 		log.Info("using Azure SQL database")
-		db, err := gorm.Open(sqlserver.Open(dsn), &gorm.Config{})
+		db, err := gorm.Open(sqlserver.Open(dsn), &gorm.Config{Logger: logger})
 		if err != nil {
 			log.Errorf("Failed to open remote db with error: '%v'", err)
 		}
-		env = &Env{db: db}
+
+		sqlDB, err := db.DB()
+		if err != nil {
+			log.Errorf("Failed to get sqlDB to configure Connection pool options with error: '%v'", err)
+		}
+
+		sqlDB.SetMaxIdleConns(maxIdleDbCxns)
+		sqlDB.SetMaxOpenConns(maxOpenDbCxns)
+		sqlDB.SetConnMaxLifetime(time.Hour)
+
+		env = &handlers.Env{Db: db}
 	}
+	return env
+}
 
-	env.db.Migrator().AutoMigrate(&models.TodoItemEntity{})
-	funcPrefix := "/api"
-	listenAddr := ":8080"
+func main() {
+	defer wg.Done()
 
-	log.Info("Starting ToDoList API Server")
+	logger := logger.New(
+		logrus.NewWriter(),
+		logger.Config{
+			SlowThreshold: time.Millisecond,
+			LogLevel:      logger.Info,
+			Colorful:      false,
+		},
+	)
 
+	env := initDb(dsn, logger, maxIdleDbCxns, maxOpenDbCxns)
+
+	// add GORM OpenTelemetry tracing plugin
+	env.Db.Use(gprom.New(gprom.Config{
+		DBName:          env.Db.Name(), // use `DBName` as metrics label
+		RefreshInterval: 15,            // Refresh metrics interval (default 15 seconds)
+		PushAddr:        "",            // push metrics if `PushAddr` configured
+		StartServer:     false,         // start http server to expose metrics
+		HTTPServerPort:  8081,          // configure http server port, default port 8080 (if you have configured multiple instances, only the first `HTTPServerPort` will be used to start server)
+		MetricsCollector: []gprom.MetricsCollector{
+			&gprom.MySQL{
+				VariableNames: []string{"Threads_running"},
+			},
+		}, // user defined metrics
+	}))
+
+	env.Db.Migrator().AutoMigrate(&models.TodoItemEntity{})
+
+	metricsRouter := mux.NewRouter()
+	metricsRouter.Use(handlers.PrometheusMiddleware)
+	metricsRouter.HandleFunc("/metrics", promhttp.Handler().ServeHTTP).Methods("GET")
+
+	metricsHandler := cors.New(cors.Options{
+		AllowedMethods: []string{"GET", "POST", "DELETE", "PATCH", "OPTIONS"},
+	}).Handler(metricsRouter)
+
+	// create router & define routes
 	router := mux.NewRouter()
-	router.HandleFunc(fmt.Sprintf("%s/healthz", funcPrefix), healthz).Methods("GET")
-	router.HandleFunc(fmt.Sprintf("%s/todos", funcPrefix), env.getAll).Methods("GET")
-	router.HandleFunc(fmt.Sprintf("%s/todos/completed", funcPrefix), env.getCompleted).Methods("GET")
-	router.HandleFunc(fmt.Sprintf("%s/todos/incomplete", funcPrefix), env.getIncomplete).Methods("GET")
-	router.HandleFunc(fmt.Sprintf("%s/todos/{id}", funcPrefix), env.getById).Methods("GET")
-	router.HandleFunc(fmt.Sprintf("%s/todos", funcPrefix), env.create).Methods("POST")
-	router.HandleFunc(fmt.Sprintf("%s/todos/{id}", funcPrefix), env.update).Methods("PATCH")
-	router.HandleFunc(fmt.Sprintf("%s/todos/complete/{id}", funcPrefix), env.complete).Methods("PATCH")
-	router.HandleFunc(fmt.Sprintf("%s/todos/{id}", funcPrefix), env.delete).Methods("DELETE")
+	router.HandleFunc("/healthz/readiness", env.Readiness).Methods("GET")
+	router.HandleFunc("/healthz/liveness", env.Liveness).Methods("GET")
+	router.HandleFunc("/api/todos", env.GetAll).Methods("GET")
+	router.HandleFunc("/api/todos/completed", env.GetCompleted).Methods("GET")
+	router.HandleFunc("/api/todos/incomplete", env.GetIncomplete).Methods("GET")
+	router.HandleFunc("/api/todos/{id}", env.GetById).Methods("GET")
+	router.HandleFunc("/api/todos", env.Create).Methods("POST")
+	router.HandleFunc("/api/todos/{id}", env.Update).Methods("PATCH")
+	router.HandleFunc("/api/todos/complete/{id}", env.Complete).Methods("PATCH")
+	router.HandleFunc("/api/todos/{id}", env.Delete).Methods("DELETE")
 
 	handler := cors.New(cors.Options{
 		AllowedMethods: []string{"GET", "POST", "DELETE", "PATCH", "OPTIONS"},
 	}).Handler(router)
 
-	http.ListenAndServe(listenAddr, handler)
-}
+	// increment waitgroup
+	wg.Add(2)
 
-func healthz(w http.ResponseWriter, r *http.Request) {
-	log.Info("API Health is OK")
-	w.Header().Set("Content-Type", "application/json")
-	io.WriteString(w, `{"alive": true}`)
-}
+	// start api endpoint
+	log.Info("Starting metrics API Server")
+	go func() { http.ListenAndServe(fmt.Sprintf(":%s", metricsListenAddr), metricsHandler) }()
 
-func init() {
-	log.SetFormatter(&log.TextFormatter{})
-	log.SetReportCaller(true)
-}
-
-func (env *Env) getAll(w http.ResponseWriter, r *http.Request) {
-	allTodoItems, err := models.GetAll(env.db)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(err)
-	}
-	log.Info(fmt.Printf("TodoItem count: %d\n", len(allTodoItems)))
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(allTodoItems)
-}
-
-func (env *Env) getById(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id, _ := strconv.Atoi(vars["id"])
-
-	todoItem, err := models.GetById(env.db, id)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(err)
-		return
-	}
-	log.Info("TodoItem: %s", todoItem)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(todoItem)
-}
-
-func (env *Env) getCompleted(w http.ResponseWriter, r *http.Request) {
-	log.Info("Get completed TodoItems")
-	completedTodoItems, err := models.GetByCompletionStatus(env.db, true)
-	fmt.Print(completedTodoItems)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(err)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(completedTodoItems)
-}
-
-func (env *Env) getIncomplete(w http.ResponseWriter, r *http.Request) {
-	log.Info("Get Incomplete TodoItems")
-	incompleteTodoItems, err := models.GetByCompletionStatus(env.db, false)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(err)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(incompleteTodoItems)
-}
-
-func (env *Env) create(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	t := models.CreateOrUpdateTodoItem{}
-
-	err := json.NewDecoder(r.Body).Decode(&t)
-	if err != nil {
-		errMsg := fmt.Sprintf("{\"created: false, \"error\": \"%s\"}", err)
-		io.WriteString(w, errMsg)
-	}
-	defer r.Body.Close()
-
-	if t.Description == "" {
-		errMsg := "{\"created: false, \"error\": \"Description must not be empty\"}"
-		io.WriteString(w, errMsg)
-	}
-
-	log.WithFields(log.Fields{"description": t.Description}).Info("Add new TodoItem. Saving to database...")
-	todo := &models.TodoItemEntity{Description: t.Description, Completed: false}
-	env.db.Create(&todo)
-	result := env.db.Last(&todo)
-	json.NewEncoder(w).Encode(result.RowsAffected)
-}
-
-func (env *Env) update(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	vars := mux.Vars(r)
-	id, _ := strconv.Atoi(vars["id"])
-
-	var t models.CreateOrUpdateTodoItem
-
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&t); err != nil {
-		io.WriteString(w, `{"created: false, "error": "error marshalling JSON to todo item"}`)
-	}
-	defer r.Body.Close()
-
-	if todoItem, err := models.GetById(env.db, id); err != nil {
-		io.WriteString(w, `{"updated": "false", "error": "Record Not Found"}`)
-	} else {
-		log.WithFields(log.Fields{"Id": id}).Info("Updating TodoItem")
-		todoItem.Description = t.Description
-		env.db.Save(&todoItem)
-		io.WriteString(w, `{"updated": true}`)
-	}
-}
-
-func (env *Env) complete(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	vars := mux.Vars(r)
-	id, _ := strconv.Atoi(vars["id"])
-
-	if todoItem, err := models.GetById(env.db, id); err != nil {
-		io.WriteString(w, `{"deleted": false, "error": "Record Not Found"}`)
-	} else {
-		todoItem.Completed = true
-		env.db.Save(&todoItem)
-		io.WriteString(w, `{"updated": true}`)
-	}
-}
-
-func (env *Env) delete(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	vars := mux.Vars(r)
-	id, _ := strconv.Atoi(vars["id"])
-
-	if todoItem, err := models.GetById(env.db, id); err != nil {
-		io.WriteString(w, `{"deleted": "false", "error": "Record Not Found"}`)
-	} else {
-		log.WithFields(log.Fields{"Id": id}).Info("Delete TodoItem")
-		env.db.Delete(&todoItem)
-		io.WriteString(w, `{"deleted": true}`)
-	}
+	// start metrics endpoint
+	log.Info("Starting TodoList API Server")
+	go func() { http.ListenAndServe(fmt.Sprintf(":%s", listenAddr), handler) }()
+	wg.Wait()
 }
