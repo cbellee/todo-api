@@ -8,7 +8,7 @@ while getopts "st" option; do
 done
 
 export LOCATION='westeurope'
-API_NAME='todolist-telegraf-demo'
+API_NAME='aca-todolist-demo'
 RG_NAME="$API_NAME-rg"
 API_PORT='8080'
 METRICS_PORT='8081'

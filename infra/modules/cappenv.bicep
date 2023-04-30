@@ -4,13 +4,10 @@ param wksCustomerId string
 param wksSharedKey string
 param tags object
 param vnetConfig object
-param isZoneRedundant bool = false
+param isZoneRedundant bool = true
 param storageAccountName string
 param storageNameMount string
 param shareName string
-
-@secure()
-param storageAccountKey string
 
 resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-03-01' = {
   location: location

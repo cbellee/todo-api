@@ -123,8 +123,8 @@
             ],
             "metricName": "gauge",
             "metricNamespace": "microsoft.app/containerapps",
-            "resourceGroup": "todolist-cbellee-rg",
-            "resourceName": "todolist-cbellee",
+            "resourceGroup": "aca-todolist-demo-rg",
+            "resourceName": "aca-todolist-demo",
             "timeGrain": "auto"
           },
           "datasource": {
@@ -247,8 +247,8 @@
             ],
             "metricName": "gauge",
             "metricNamespace": "microsoft.app/containerapps",
-            "resourceGroup": "todolist-cbellee-rg",
-            "resourceName": "todolist-cbellee",
+            "resourceGroup": "aca-todolist-demo-rg",
+            "resourceName": "aca-todolist-demo",
             "timeGrain": "auto"
           },
           "datasource": {
@@ -367,8 +367,8 @@
             ],
             "metricName": "UsageNanoCores",
             "metricNamespace": "microsoft.app/containerapps",
-            "resourceGroup": "todolist-cbellee-rg",
-            "resourceName": "todolist-cbellee",
+            "resourceGroup": "aca-todolist-demo-rg",
+            "resourceName": "aca-todolist-demo",
             "timeGrain": "auto"
           },
           "datasource": {
@@ -491,8 +491,8 @@
             ],
             "metricName": "gauge",
             "metricNamespace": "microsoft.app/containerapps",
-            "resourceGroup": "todolist-cbellee-rg",
-            "resourceName": "todolist-cbellee",
+            "resourceGroup": "aca-todolist-demo-rg",
+            "resourceName": "aca-todolist-demo",
             "timeGrain": "auto"
           },
           "datasource": {
@@ -603,8 +603,8 @@
             "dimensionFilters": [],
             "metricName": "Replicas",
             "metricNamespace": "microsoft.app/containerapps",
-            "resourceGroup": "todolist-cbellee-rg",
-            "resourceName": "todolist-cbellee",
+            "resourceGroup": "aca-todolist-demo-rg",
+            "resourceName": "aca-todolist-demo",
             "timeGrain": "auto"
           },
           "datasource": {
@@ -720,8 +720,8 @@
             ],
             "metricName": "count",
             "metricNamespace": "microsoft.app/containerapps",
-            "resourceGroup": "todolist-cbellee-rg",
-            "resourceName": "todolist-cbellee",
+            "resourceGroup": "aca-todolist-demo-rg",
+            "resourceName": "aca-todolist-demo",
             "timeGrain": "auto"
           },
           "datasource": {

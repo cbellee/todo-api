@@ -100,12 +100,12 @@ module containerAppEnvModule './modules/cappenv.bicep' = {
     name: containerAppEnvName
     location: location
     vnetConfig: vnetConfig
+    isZoneRedundant: true
     tags: tags
     wksSharedKey: wksModule.outputs.workspaceSharedKey
     wksCustomerId: wksModule.outputs.workspaceCustomerId
     storageAccountName: storageAccountName
     shareName: fileShareName
-    storageAccountKey: storageAccountKey
     storageNameMount: storageNameMount
   }
 }

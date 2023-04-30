@@ -39,7 +39,7 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
   }
   properties: {
     configuration: {
-      activeRevisionsMode: 'Single'
+      activeRevisionsMode: 'Multiple'
       secrets: [
         {
           name: 'registry-password'
@@ -153,8 +153,8 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
         }
       ]
       scale: {
-        minReplicas: 1
-        maxReplicas: 20
+        minReplicas: 3
+        maxReplicas: 18
         rules: [
           {
             name: 'http-scale-rule'
