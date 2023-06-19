@@ -53,6 +53,7 @@ resource grafana 'Microsoft.Dashboard/grafana@2022-08-01' = {
 }
 
 output workspaceId string = wks.id
+output workspaceName string = wks.name
 output azMonWorkspaceName string = azureMonitorWorkspace.name
 output workspaceSharedKey string = wks.listKeys().primarySharedKey
 output workspaceCustomerId string = wks.properties.customerId

@@ -5,15 +5,8 @@ param apiPort string
 param containerImage string
 param acrName string
 param managedEnvironmentId string
-
-@secure()
-param storageAccountKey string
-
-@secure()
-param acrAdminPassword string
-
+param storageAccountName string
 param telegrafImage string = 'telegraf:1.23.4'
-param acrLoginServer string
 param sqlCxnString string
 param storageNameMount string
 param volumeName string
@@ -29,36 +22,54 @@ param maxOpenDbCxns string
 var azMonMetricsPublisherRoleDefinitionID = '3913510d-42f4-4e42-8a64-420c390055eb'
 var azMonDataReaderRoleDefinitionID = 'b0d8363b-8ddd-447d-831f-62ca05bff136'
 var grafanaAdminRoleDefinitionID = '22926164-76b3-42b3-bc55-97df8dab3e41'
+var acrPullRoleDefinitionId = 'acdd72a7-3385-48ef-bd42-f606fba81ae7'
+var umidName = 'aca-umid'
+
+resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' existing = {
+  name: storageAccountName
+}
+
+resource umid 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: umidName
+  location: location
+}
+
+module acrPull 'rbac-resource-scope.bicep' = {
+  name: 'module-acrPull'
+  params: {
+    acrName: acrName
+    umidName: umidName
+    acrPullRoleDefinitionId: acrPullRoleDefinitionId
+  }
+}
 
 resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
   name: apiName
   location: location
   tags: tags
   identity: {
-    type: 'SystemAssigned'
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${umid.id}': {}
+    }
   }
   properties: {
     configuration: {
       activeRevisionsMode: 'Multiple'
       secrets: [
         {
-          name: 'registry-password'
-          value: acrAdminPassword
-        }
-        {
           name: 'sql-cxn-string'
           value: sqlCxnString
         }
         {
           name: 'storage-account-key'
-          value: storageAccountKey
+          value: storageAccount.listKeys().keys[0].value
         }
       ]
       registries: [
         {
-          passwordSecretRef: 'registry-password'
-          server: acrLoginServer
-          username: acrName
+          server: '${acrName}.azurecr.io'
+          identity: umid.id
         }
       ]
       ingress: {
@@ -148,8 +159,7 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
               volumeName: volumeName
             }
           ]
-          env: [
-          ]
+          env: []
         }
       ]
       scale: {
@@ -168,12 +178,15 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
       }
     }
   }
+  dependsOn: [
+    acrPull
+  ]
 }
 
 module azMonMetricsPublisherRbac 'rbac-resourcegroup-scope.bicep' = {
   name: 'module-azMonMetricsPublisherRbac'
   params: {
-    principalId: todoListApi.identity.principalId
+    principalId: umid.properties.principalId
     roleDefinitionID: azMonMetricsPublisherRoleDefinitionID
     principalType: 'ServicePrincipal'
   }

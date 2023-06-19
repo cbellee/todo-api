@@ -5,10 +5,7 @@ param apiPort string = '8080'
 param containerImage string
 param sqlAdminLoginName string = 'dbadmin'
 param fileShareName string = 'telegraf-share'
-
-@secure()
 param storageAccountName string
-
 param storageNameMount string = 'storage-mount'
 param mountPath string = '/etc/telegraf'
 param userPrincipalId string
@@ -18,11 +15,8 @@ param tags object = {
 }
 
 var affix = uniqueString(resourceGroup().id)
-var storageAccountKey = storage.listKeys().keys[0].value
 var altName = 'alt-${affix}'
 var containerAppEnvName = 'app-env-external-vnet-${affix}'
-var acrLoginServer = '${acrName}.azurecr.io'
-var acrAdminPassword = acr.listCredentials(acr.apiVersion).passwords[0].value
 var workspaceName = 'wks-${affix}'
 var azMonName = 'azm-${affix}'
 var sqlServerName = 'sql-server-${affix}'
@@ -46,10 +40,6 @@ var vnetConfig = {
 
 resource acr 'Microsoft.ContainerRegistry/registries@2021-12-01-preview' existing = {
   name: acrName
-}
-
-resource storage 'Microsoft.Storage/storageAccounts@2022-09-01' existing = {
-  name: storageAccountName
 }
 
 resource vnet 'Microsoft.Network/virtualNetworks@2022-07-01' = {
@@ -114,8 +104,6 @@ module app 'modules/app.bicep' = {
   name: 'module-app'
   params: {
     userPrincipalId: userPrincipalId
-    acrAdminPassword: acrAdminPassword
-    acrLoginServer: acrLoginServer
     acrName: acr.name
     apiName: apiName
     apiPort: apiPort
@@ -123,7 +111,7 @@ module app 'modules/app.bicep' = {
     location: location
     managedEnvironmentId: containerAppEnvModule.outputs.id
     sqlCxnString: sql.outputs.cxnString
-    storageAccountKey: storageAccountKey
+    storageAccountName: storageAccountName
     storageNameMount: storageNameMount
     volumeName: volumeName
     mountPath: mountPath
