@@ -1,6 +1,5 @@
 
-let endpoint = 'https://todolistapp.blackbush-33096089.australiaeast.azurecontainerapps.io'
-// let endpoint = 'http://localhost:8080'
+let endpoint = window._env_.API_URL
 
 export async function getTodos() {
     const response = await fetch(`${endpoint}/api/todos`, {
