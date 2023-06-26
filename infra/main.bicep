@@ -73,7 +73,7 @@ module wksModule 'modules/wks.bicep' = {
   params: {
     name: workspaceName
     azMonName: azMonName
-    location: azMonLocation
+    location: location
     tags: tags
   }
 }
