@@ -29,7 +29,7 @@ steps:
     deploymentScope: 'Resource Group'
     azureResourceManagerConnection: $(azureServiceConnection)
     action: 'Create Or Update Resource Group'
-    resourceGroupName: '$(resourceGroupName)'
+    resourceGroupName: $(resourceGroupName)
     location: $(location)
     templateLocation: 'Linked artifact'
     csmFile: $(templateFilePath)
@@ -39,4 +39,3 @@ steps:
     overrideParameters: |
       -location $(location)
       -fileShareName: $(fileShareName)
-      -grafanaPrincipalId: $(userPrincipalId)
