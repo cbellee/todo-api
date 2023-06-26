@@ -49,16 +49,16 @@ steps:
     templateLocation: 'Linked artifact'
     csmFile: $(templateFilePath)
     deploymentMode: 'Incremental'
-    deploymentName: 'infraDeployment'
+    deploymentName: 'infra'
     deploymentOutputs: 'infraOutputs'
     overrideParameters: '-location $(location) -fileShareName $(fileShareName)'
 
 - script: |
-    containerAppEnvironmentId=$(infraDeployment.outputs['containerAppEnvironmentId'].value)
-    acrName=$(infraDeployment.outputs['acrName'].value)
-    sqlCxnString=$(infraDeployment.outputs['sqlCxnString'].value)
-    storageAccountName=$(infraDeployment.outputs['storageAccountName'].value)
-    sqlServerName=$(infraDeployment.outputs['sqlServerName'].value)
+    containerAppEnvironmentId=$(infraDeployment.infra.outputs['containerAppEnvironmentId'].value)
+    acrName=$(infraDeployment.infra.outputs['acrName'].value)
+    sqlCxnString=$(infraDeployment.infra.outputs['sqlCxnString'].value)
+    storageAccountName=$(infraDeployment.infra.outputs['storageAccountName'].value)
+    sqlServerName=$(infraDeployment.infra.outputs['sqlServerName'].value)
 
     echo $SYSTEM_ACCESSTOKEN | az devops login
 
