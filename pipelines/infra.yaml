@@ -14,7 +14,7 @@ variables:
   locationShortName: 'aue'
   resourceGroupName: 'aca-todolist-$(locationShortName)-rg'
   azureServiceConnection: 'internal_azure_subscription'
-  templateFile: '/infra/main.bicep'
+  templateFilePath: 'infra/main.bicep'
   userPrincipalId: '57963f10-818b-406d-a2f6-6e758d86e259'
   fileShareName: 'telegraf-share'
 
@@ -33,7 +33,7 @@ steps:
     resourceGroupName: '$(resourceGroupName)'
     location: $(location)
     templateLocation: 'Linked artifact'
-    csmFile: '/infra/main.bicep'
+    csmFile: $(templateFilePath)
     deploymentMode: 'Incremental'
     deploymentName: 'DeployPipelineTemplate'
     deploymentOutputs: 'infraOutputs'
