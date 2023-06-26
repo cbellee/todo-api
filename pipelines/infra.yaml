@@ -54,11 +54,11 @@ steps:
     overrideParameters: '-location $(location) -fileShareName $(fileShareName)'
 
 - script: |
-    containerAppEnvironmentId=$(infraDeployment.infra.outputs['containerAppEnvironmentId'].value)
-    acrName=$(infraDeployment.infra.outputs['acrName'].value)
-    sqlCxnString=$(infraDeployment.infra.outputs['sqlCxnString'].value)
-    storageAccountName=$(infraDeployment.infra.outputs['storageAccountName'].value)
-    sqlServerName=$(infraDeployment.infra.outputs['sqlServerName'].value)
+    containerAppEnvironmentId=$(infraOutputs.outputs['containerAppEnvironmentId'].value)
+    acrName=$(infraOutputs.outputs['acrName'].value)
+    sqlCxnString=$(infraOutputs.outputs['sqlCxnString'].value)
+    storageAccountName=$(infraOutputs.outputs['storageAccountName'].value)
+    sqlServerName=$(infraOutputs.outputs['sqlServerName'].value)
 
     echo $SYSTEM_ACCESSTOKEN | az devops login
 
