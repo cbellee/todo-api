@@ -35,10 +35,10 @@ steps:
     templateLocation: 'Linked artifact'
     csmFile: $(templateFilePath)
     deploymentMode: 'Incremental'
-    deploymentName: 'DeployPipelineTemplate'
+    deploymentName: 'infraDeployment'
     deploymentOutputs: 'infraOutputs'
     overrideParameters: |
       -location $(location)
       -fileShareName: $(fileShareName)
-      -grafanaPrincipalId: $(principalId)
-      -userPrincipalId: $(principalId)
+      -grafanaPrincipalId: $(userPrincipalId)
+      -userPrincipalId: $(userPrincipalId)
