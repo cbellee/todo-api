@@ -1,0 +1,29 @@
+trigger:
+- main
+
+variables:
+  azureServiceConnection: 'internal_azure_subscription'
+  imageRepository: 'aca-todolist-demo-api'
+  dockerfilePath: '$(Build.SourcesDirectory)/api/Dockerfile'
+  tag: '$(Build.BuildId)'
+  acrName: ''
+  vmImageName: 'ubuntu-latest'
+
+stages:
+- stage: Build
+  displayName: Build and publish stage
+  jobs:
+  - job: Build
+    displayName: Build job
+    pool:
+      name: $(vmImageName)
+    steps:
+    - task: AzureCLI@2
+      name: 'BuildAndPushImage'
+      displayName: 'Build and push an image to Azure Container Registry'
+      inputs:
+        azureSubscription: $(azureServiceConnection)
+        scriptType: bash
+        inlineScript: |
+          az acr build --registry $(acrName) --platform linux --image $(imageRepository):$(tag) .
+        scriptLocation: inlineScript

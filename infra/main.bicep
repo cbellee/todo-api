@@ -1,14 +1,14 @@
 param location string
-param acrName string
+/* param acrName string
 param apiName string = 'todolist'
 param apiPort string = '8080'
-param containerImage string
+param containerImage string */
 param sqlAdminLoginName string = 'dbadmin'
-param fileShareName string = 'telegraf-share'
-param storageAccountName string
+param fileShareName string
 param storageNameMount string = 'storage-mount'
-param mountPath string = '/etc/telegraf'
-param userPrincipalId string
+// param mountPath string = '/etc/telegraf'
+param azMonLocation string = 'australiasoutheast'
+// param userPrincipalId string
 param tags object = {
   environment: 'dev'
   costcode: '1234567890'
@@ -17,18 +17,19 @@ param tags object = {
 var affix = uniqueString(resourceGroup().id)
 var altName = 'alt-${affix}'
 var containerAppEnvName = 'app-env-external-vnet-${affix}'
+var storageAccountName = 'stg${affix}'
 var workspaceName = 'wks-${affix}'
 var azMonName = 'azm-${affix}'
 var sqlServerName = 'sql-server-${affix}'
 var sqlDbName = 'todo-list-db'
 var vnetName = 'vnet-aca-${affix}'
 var sqlAdminLoginPassword = '${affix}-${guid(affix)}'
-var volumeName = 'azure-file-volume'
+// var volumeName = 'azure-file-volume'
 var logAnalyticsReaderRoleID = '73c42c96-874c-492b-b04d-ab87d138a893'
-var listenAddress = '8080'
+/* var listenAddress = '8080'
 var metricsListenAddress = '8081'
 var maxIdleDbCxn = '5'
-var maxOpenDbCxn = '10'
+var maxOpenDbCxn = '10' */
 
 var vnetConfig = {
   internal: false
@@ -38,8 +39,12 @@ var vnetConfig = {
   dockerBridgeCidr: '10.1.0.1/16'
 }
 
-resource acr 'Microsoft.ContainerRegistry/registries@2021-12-01-preview' existing = {
-  name: acrName
+module storage 'modules/stor.bicep' = {
+name: 'module-storage'
+params: {
+  fileShareName: fileShareName
+  location: location
+  }
 }
 
 resource vnet 'Microsoft.Network/virtualNetworks@2022-07-01' = {
@@ -68,7 +73,7 @@ module wksModule 'modules/wks.bicep' = {
   params: {
     name: workspaceName
     azMonName: azMonName
-    location: location
+    location: azMonLocation
     tags: tags
   }
 }
@@ -100,7 +105,7 @@ module containerAppEnvModule './modules/cappenv.bicep' = {
   }
 }
 
-module app 'modules/app.bicep' = {
+/* module app 'modules/app.bicep' = {
   name: 'module-app'
   params: {
     userPrincipalId: userPrincipalId
@@ -135,6 +140,7 @@ resource sqlFirewallRules 'Microsoft.Sql/servers/firewallRules@2022-05-01-previe
     endIpAddress: app.outputs.ipAddress
   }
 }
+*/
 
 module azMonitorMetricsReaderRole './modules/rbac-subscription-scope.bicep' = {
   name: 'module-azMonitorMetricsReadRbac'
@@ -152,6 +158,6 @@ resource azLoadTest 'Microsoft.LoadTestService/loadTests@2022-12-01' = {
   tags: tags
 }
 
-output fqdn string = app.outputs.fqdn
-output egressIp string = app.outputs.ipAddress
+// output fqdn string = app.outputs.fqdn
+// output egressIp string = app.outputs.ipAddress
 output sqlAdminLoginPassword string = sqlAdminLoginPassword

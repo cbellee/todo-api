@@ -7,8 +7,9 @@ while getopts "st" option; do
    esac
 done
 
-export LOCATION='westeurope'
-API_NAME='aca-todolist-demo'
+export LOCATION='australiaeast'
+LOCATION_SHORT_NAME='aue'
+API_NAME="aca-todolist-$LOCATION_SHORT_NAME"
 RG_NAME="$API_NAME-rg"
 API_PORT='8080'
 METRICS_PORT='8081'

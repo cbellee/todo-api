@@ -22,7 +22,7 @@ param maxOpenDbCxns string
 var azMonMetricsPublisherRoleDefinitionID = '3913510d-42f4-4e42-8a64-420c390055eb'
 var azMonDataReaderRoleDefinitionID = 'b0d8363b-8ddd-447d-831f-62ca05bff136'
 var grafanaAdminRoleDefinitionID = '22926164-76b3-42b3-bc55-97df8dab3e41'
-var acrPullRoleDefinitionId = 'acdd72a7-3385-48ef-bd42-f606fba81ae7'
+var acrPullRoleDefinitionId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 var umidName = 'aca-umid'
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' existing = {

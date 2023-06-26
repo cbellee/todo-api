@@ -1,0 +1,42 @@
+trigger:
+  branches:
+    include:
+      - 'main'
+  paths:
+    include:
+      - 'infra/*'
+
+name: 'Deploy Infrastructure'
+
+variables:
+  vmImageName: 'ubuntu-latest'
+  location: 'australiaeast'
+  locationShortName: 'aue'
+  resourceGroupName: 'aca-todolist-$(locationShortName)-rg'
+  azureServiceConnection: 'internal_azure_subscription'
+  templateFile: '../infra/main.bicep'
+  userPrincipalId: '57963f10-818b-406d-a2f6-6e758d86e259'
+  fileShareName: 'telegraf-share'
+
+pool:
+  vmImage: $(vmImageName)
+
+steps:
+- task: AzureResourceManagerTemplateDeployment@3
+  name: 'infraDeployment'
+  inputs:
+    deploymentScope: 'Resource Group'
+    azureResourceManagerConnection: $(azureServiceConnection)
+    action: 'Create Or Update Resource Group'
+    resourceGroupName: '$(resourceGroupName)'
+    location: $(location)
+    templateLocation: 'Linked artifact'
+    csmFile: '../infra/main.bicep'
+    deploymentMode: 'Incremental'
+    deploymentName: 'DeployPipelineTemplate'
+    deploymentOutputs: 'infraOutputs'
+    overrideParameters: |
+      -location $(location)
+      -fileShareName: $(fileShareName)
+      -grafanaPrincipalId: $(principalId)
+      -userPrincipalId: $(principalId)
