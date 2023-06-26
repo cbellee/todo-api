@@ -1,5 +1,6 @@
 param apiName string = 'todolist'
 param apiPort string = '8080'
+param timeStamp string = utcNow()
 param location string
 param acrName string
 param grafanaPrincipalId string
@@ -24,7 +25,7 @@ resource sql 'Microsoft.Sql/servers@2022-11-01-preview' existing = {
 }
 
 module app 'modules/app.bicep' = {
-  name: 'module-app'
+  name: 'module-app-${timeStamp}'
   params: {
     userPrincipalId: userPrincipalId
     acrName: acrName

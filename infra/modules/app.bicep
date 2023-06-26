@@ -18,6 +18,7 @@ param listenAddress string
 param metricsListenAddress string
 param maxIdleDbCxns string
 param maxOpenDbCxns string
+param timeStamp string = utcNow()
 
 var azMonMetricsPublisherRoleDefinitionID = '3913510d-42f4-4e42-8a64-420c390055eb'
 var azMonDataReaderRoleDefinitionID = 'b0d8363b-8ddd-447d-831f-62ca05bff136'
@@ -35,7 +36,7 @@ resource umid 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
 }
 
 module acrPull 'rbac-resource-scope.bicep' = {
-  name: 'module-acrPull'
+  name: 'module-acrPull-${timeStamp}'
   params: {
     acrName: acrName
     umidName: umidName
@@ -184,7 +185,7 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
 }
 
 module azMonMetricsPublisherRbac 'rbac-resourcegroup-scope.bicep' = {
-  name: 'module-azMonMetricsPublisherRbac'
+  name: 'module-azMonMetricsPublisherRbac-${timeStamp}'
   params: {
     principalId: umid.properties.principalId
     roleDefinitionID: azMonMetricsPublisherRoleDefinitionID
@@ -193,7 +194,7 @@ module azMonMetricsPublisherRbac 'rbac-resourcegroup-scope.bicep' = {
 }
 
 module azMonDataReader 'rbac-resourcegroup-scope.bicep' = {
-  name: 'module-azMonDataReaderRbac'
+  name: 'module-azMonDataReaderRbac-${timeStamp}'
   params: {
     principalId: userPrincipalId
     roleDefinitionID: azMonDataReaderRoleDefinitionID
@@ -202,7 +203,7 @@ module azMonDataReader 'rbac-resourcegroup-scope.bicep' = {
 }
 
 module grafanaAdminRole 'rbac-resourcegroup-scope.bicep' = {
-  name: 'module-grafanaAdminRbac'
+  name: 'module-grafanaAdminRbac-${timeStamp}'
   params: {
     principalId: userPrincipalId
     roleDefinitionID: grafanaAdminRoleDefinitionID
@@ -211,7 +212,7 @@ module grafanaAdminRole 'rbac-resourcegroup-scope.bicep' = {
 }
 
 module grafanaReadAccessLogAnalyticsRole 'rbac-resourcegroup-scope.bicep' = {
-  name: 'module-grafanaLogAnalyticsReadRbac'
+  name: 'module-grafanaLogAnalyticsReadRbac-${timeStamp}'
   params: {
     principalId: grafanaPrincipalId
     roleDefinitionID: grafanaAdminRoleDefinitionID

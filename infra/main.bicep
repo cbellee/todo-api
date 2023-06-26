@@ -3,6 +3,7 @@ param location string
 param apiName string = 'todolist'
 param apiPort string = '8080'
 param containerImage string */
+param timeStamp string = utcNow()
 param sqlAdminLoginName string = 'dbadmin'
 param fileShareName string
 param storageNameMount string = 'storage-mount'
@@ -40,7 +41,7 @@ var vnetConfig = {
 }
 
 module storage 'modules/stor.bicep' = {
-name: 'module-storage'
+name: 'module-storage-${timeStamp}'
 params: {
   fileShareName: fileShareName
   location: location
@@ -69,7 +70,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2022-07-01' = {
 }
 
 module wksModule 'modules/wks.bicep' = {
-  name: 'module-wks'
+  name: 'module-wks-${timeStamp}'
   params: {
     name: workspaceName
     azMonName: azMonName
@@ -80,7 +81,7 @@ module wksModule 'modules/wks.bicep' = {
 }
 
 module sql 'modules/sql.bicep' = {
-  name: 'module-sql'
+  name: 'module-sql-${timeStamp}'
   params: {
     adminLoginName: sqlAdminLoginName
     adminLoginPassword: sqlAdminLoginPassword
@@ -91,7 +92,7 @@ module sql 'modules/sql.bicep' = {
 }
 
 module containerAppEnvModule './modules/cappenv.bicep' = {
-  name: 'module-capp-env'
+  name: 'module-capp-env-${timeStamp}'
   params: {
     name: containerAppEnvName
     location: location
@@ -144,7 +145,7 @@ resource sqlFirewallRules 'Microsoft.Sql/servers/firewallRules@2022-05-01-previe
 */
 
 module azMonitorMetricsReaderRole './modules/rbac-subscription-scope.bicep' = {
-  name: 'module-azMonitorMetricsReadRbac'
+  name: 'module-azMonitorMetricsReadRbac-${timeStamp}'
   scope: subscription()
   params: {
     principalId: wksModule.outputs.grafanaPrincipalId
