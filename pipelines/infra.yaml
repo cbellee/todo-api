@@ -36,6 +36,4 @@ steps:
     deploymentMode: 'Incremental'
     deploymentName: 'infraDeployment'
     deploymentOutputs: 'infraOutputs'
-    overrideParameters: |
-      -location $(location)
-      -fileShareName: $(fileShareName)
+    overrideParameters: '-location $(location) -fileShareName $(fileShareName)'
