@@ -15,7 +15,6 @@ variables:
   resourceGroupName: 'aca-todolist-$(locationShortName)-rg'
   azureServiceConnection: 'internal_azure_subscription'
   templateFilePath: 'infra/main.bicep'
-  userPrincipalId: '57963f10-818b-406d-a2f6-6e758d86e259'
   fileShareName: 'telegraf-share'
 
 pool:
@@ -41,4 +40,3 @@ steps:
       -location $(location)
       -fileShareName: $(fileShareName)
       -grafanaPrincipalId: $(userPrincipalId)
-      -userPrincipalId: $(userPrincipalId)
