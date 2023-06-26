@@ -65,12 +65,6 @@ steps:
     INFRA_OUTPUTS: $(infraOutputs)
 
 - script: |
-    containerAppEnvironmentId=$(infraOutputs.outputs['containerAppEnvironmentId'].value)
-    acrName=$(infraOutputs.outputs['acrName'].value)
-    sqlCxnString=$(infraOutputs.outputs['sqlCxnString'].value)
-    storageAccountName=$(infraOutputs.outputs['storageAccountName'].value)
-    sqlServerName=$(infraOutputs.outputs['sqlServerName'].value)
-
     echo $SYSTEM_ACCESSTOKEN | az devops login
 
     az pipelines variable-group variable update \
