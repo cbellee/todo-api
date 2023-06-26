@@ -1,15 +1,9 @@
 param location string
-/* param acrName string
-param apiName string = 'todolist'
-param apiPort string = '8080'
-param containerImage string */
 param timeStamp string = utcNow()
 param sqlAdminLoginName string = 'dbadmin'
 param fileShareName string
 param storageNameMount string = 'storage-mount'
-// param mountPath string = '/etc/telegraf'
 param azMonLocation string = 'australiasoutheast'
-// param userPrincipalId string
 param tags object = {
   environment: 'dev'
   costcode: '1234567890'
@@ -18,19 +12,13 @@ param tags object = {
 var affix = uniqueString(resourceGroup().id)
 var altName = 'alt-${affix}'
 var containerAppEnvName = 'app-env-external-vnet-${affix}'
-var storageAccountName = 'stg${affix}'
 var workspaceName = 'wks-${affix}'
 var azMonName = 'azm-${affix}'
 var sqlServerName = 'sql-server-${affix}'
 var sqlDbName = 'todo-list-db'
 var vnetName = 'vnet-aca-${affix}'
 var sqlAdminLoginPassword = '${affix}-${guid(affix)}'
-// var volumeName = 'azure-file-volume'
 var logAnalyticsReaderRoleID = '73c42c96-874c-492b-b04d-ab87d138a893'
-/* var listenAddress = '8080'
-var metricsListenAddress = '8081'
-var maxIdleDbCxn = '5'
-var maxOpenDbCxn = '10' */
 
 var vnetConfig = {
   internal: false
@@ -38,6 +26,13 @@ var vnetConfig = {
   platformReservedCidr: '10.0.0.0/16'
   platformReservedDnsIP: '10.0.0.2'
   dockerBridgeCidr: '10.1.0.1/16'
+}
+
+module acr 'modules/acr.bicep' = {
+  name: 'module-acr-${timeStamp}'
+  params: {
+    location: location
+  }
 }
 
 module storage 'modules/stor.bicep' = {
@@ -107,43 +102,6 @@ module containerAppEnvModule './modules/cappenv.bicep' = {
   }
 }
 
-/* module app 'modules/app.bicep' = {
-  name: 'module-app'
-  params: {
-    userPrincipalId: userPrincipalId
-    acrName: acr.name
-    apiName: apiName
-    apiPort: apiPort
-    containerImage: containerImage
-    location: location
-    managedEnvironmentId: containerAppEnvModule.outputs.id
-    sqlCxnString: sql.outputs.cxnString
-    storageAccountName: storageAccountName
-    storageNameMount: storageNameMount
-    volumeName: volumeName
-    mountPath: mountPath
-    grafanaPrincipalId: wksModule.outputs.grafanaPrincipalId
-    tags: tags
-    listenAddress: listenAddress
-    metricsListenAddress: metricsListenAddress
-    maxIdleDbCxns: maxIdleDbCxn
-    maxOpenDbCxns: maxOpenDbCxn
-  }
-}
-
-resource sqlFirewallRules 'Microsoft.Sql/servers/firewallRules@2022-05-01-preview' = {
-  name: '${sqlServerName}/container-app-rule'
-  dependsOn: [
-    app
-    sql
-  ]
-  properties: {
-    startIpAddress: app.outputs.ipAddress
-    endIpAddress: app.outputs.ipAddress
-  }
-}
-*/
-
 module azMonitorMetricsReaderRole './modules/rbac-subscription-scope.bicep' = {
   name: 'module-azMonitorMetricsReadRbac-${timeStamp}'
   scope: subscription()
@@ -160,6 +118,9 @@ resource azLoadTest 'Microsoft.LoadTestService/loadTests@2022-12-01' = {
   tags: tags
 }
 
-// output fqdn string = app.outputs.fqdn
-// output egressIp string = app.outputs.ipAddress
-output sqlAdminLoginPassword string = sqlAdminLoginPassword
+// output sqlAdminLoginPassword string = sqlAdminLoginPassword
+output acrName string = acr.outputs.acrName
+output containerAppEnvironmentId string = containerAppEnvModule.outputs.id
+output sqlServerName string = sql.outputs.name
+output sqlCxnString string = sql.outputs.cxnString
+output storageAccountName string = storage.outputs.storageAccountName

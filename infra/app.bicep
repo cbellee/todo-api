@@ -3,7 +3,6 @@ param apiPort string = '8080'
 param timeStamp string = utcNow()
 param location string
 param acrName string
-param grafanaPrincipalId string
 param containerImage string
 param userPrincipalId string
 param mountPath string = '/etc/telegraf'
@@ -39,7 +38,6 @@ module app 'modules/app.bicep' = {
     storageNameMount: storageNameMount
     volumeName: volumeName
     mountPath: mountPath
-    grafanaPrincipalId: grafanaPrincipalId
     tags: tags
     listenAddress: listenAddress
     metricsListenAddress: metricsListenAddress

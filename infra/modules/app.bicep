@@ -8,17 +8,18 @@ param managedEnvironmentId string
 param storageAccountName string
 param telegrafImage string = 'telegraf:1.23.4'
 param sqlCxnString string
-param storageNameMount string
-param volumeName string
-param mountPath string
-param userPrincipalId string
-param grafanaPrincipalId string
+param storageNameMount string = 'storage-mount'
+param volumeName string = 'storage-volume'
+param mountPath string = '/mnt/storage'
+param userPrincipalId string = '57963f10-818b-406d-a2f6-6e758d86e259'
 param concurrentRequestsScaleRule string = '50'
-param listenAddress string
-param metricsListenAddress string
-param maxIdleDbCxns string
-param maxOpenDbCxns string
+param listenAddress string = '8080'
+param metricsListenAddress string = '8081'
+param maxIdleDbCxns string = '10'
+param maxOpenDbCxns string = '20'
 param timeStamp string = utcNow()
+param minReplicas int = 3
+param maxReplicas int = 12
 
 var azMonMetricsPublisherRoleDefinitionID = '3913510d-42f4-4e42-8a64-420c390055eb'
 var azMonDataReaderRoleDefinitionID = 'b0d8363b-8ddd-447d-831f-62ca05bff136'
@@ -164,8 +165,8 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
         }
       ]
       scale: {
-        minReplicas: 3
-        maxReplicas: 18
+        minReplicas: minReplicas
+        maxReplicas: maxReplicas
         rules: [
           {
             name: 'http-scale-rule'
@@ -214,7 +215,7 @@ module grafanaAdminRole 'rbac-resourcegroup-scope.bicep' = {
 module grafanaReadAccessLogAnalyticsRole 'rbac-resourcegroup-scope.bicep' = {
   name: 'module-grafanaLogAnalyticsReadRbac-${timeStamp}'
   params: {
-    principalId: grafanaPrincipalId
+    principalId: userPrincipalId
     roleDefinitionID: grafanaAdminRoleDefinitionID
     principalType: 'ServicePrincipal'
   }

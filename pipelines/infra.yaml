@@ -16,6 +16,10 @@ variables:
   azureServiceConnection: 'internal_azure_subscription'
   templateFilePath: 'infra/main.bicep'
   fileShareName: 'telegraf-share'
+  orgName: 'kainidev'
+  projectName: 'AzureFastTrackCustomerExamples'
+  group-id: '17'
+
 
 pool:
   vmImage: $(vmImageName)
@@ -37,3 +41,51 @@ steps:
     deploymentName: 'infraDeployment'
     deploymentOutputs: 'infraOutputs'
     overrideParameters: '-location $(location) -fileShareName $(fileShareName)'
+
+- script: |
+    containerAppEnvironmentId=$(infraDeployment.outputs['containerAppEnvironmentId'].value)
+    acrName=$(infraDeployment.outputs['acrName'].value)
+    sqlCxnString=$(infraDeployment.outputs['sqlCxnString'].value)
+    storageAccountName=$(infraDeployment.outputs['storageAccountName'].value)
+    sqlServerName=$(infraDeployment.outputs['sqlServerName'].value)
+
+    echo $SYSTEM_ACCESSTOKEN | az devops login
+
+    az pipelines variable-group variable update \
+      --group-id $(group_id) \
+      --name containerAppEnvironmentId \
+      --value "${containerAppEnvironmentId}" \
+      --org https://dev.azure.com/$(orgName) \
+      --project $(projectName)
+
+      az pipelines variable-group variable update \
+      --group-id $(group_id) \
+      --name acrName \
+      --value "${acrName}" \
+      --org https://dev.azure.com/$(orgName) \
+      --project $(projectName)
+
+      az pipelines variable-group variable update \
+      --group-id $(group_id) \
+      --name sqlCxnString \
+      --value "${sqlCxnString}" \
+      --org https://dev.azure.com/$(orgName) \
+      --project $(projectName)
+
+      az pipelines variable-group variable update \
+      --group-id $(group_id) \
+      --name storageAccountName \
+      --value "${storageAccountName}" \
+      --org https://dev.azure.com/$(orgName) \
+      --project $(projectName)
+
+      az pipelines variable-group variable update \
+      --group-id $(group_id) \
+      --name sqlServerName \
+      --value "${sqlServerName}" \
+      --org https://dev.azure.com/$(orgName) \
+      --project $(projectName)
+
+  displayName: "Update variables inside 'acr-vars' variable group"
+  env:
+    SYSTEM_ACCESSTOKEN: $(System.AccessToken)
