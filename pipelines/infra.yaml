@@ -22,6 +22,8 @@ pool:
   vmImage: $(vmImageName)
 
 steps:
+- checkout: self 
+
 - task: AzureResourceManagerTemplateDeployment@3
   name: 'infraDeployment'
   inputs:
@@ -31,7 +33,7 @@ steps:
     resourceGroupName: '$(resourceGroupName)'
     location: $(location)
     templateLocation: 'Linked artifact'
-    csmFile: '../infra/main.bicep'
+    csmFile: '/infra/main.bicep'
     deploymentMode: 'Incremental'
     deploymentName: 'DeployPipelineTemplate'
     deploymentOutputs: 'infraOutputs'
