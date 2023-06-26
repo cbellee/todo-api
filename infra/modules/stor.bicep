@@ -29,4 +29,4 @@ resource fileShare 'Microsoft.Storage/storageAccounts/fileServices/shares@2022-0
 }
 
 output storageAccountName string = stor.name
-output shareName string = fileShare.name
+output fileShareName string = fileShare.name

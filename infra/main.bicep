@@ -100,8 +100,8 @@ module containerAppEnvModule './modules/cappenv.bicep' = {
     tags: tags
     wksSharedKey: wksModule.outputs.workspaceSharedKey
     wksCustomerId: wksModule.outputs.workspaceCustomerId
-    storageAccountName: storageAccountName
-    shareName: fileShareName
+    storageAccountName: storage.outputs.storageAccountName
+    shareName: storage.outputs.fileShareName
     storageNameMount: storageNameMount
   }
 }
