@@ -1,6 +1,7 @@
 param name string
 param azMonName string
 param location string
+param azMonLocation string
 param tags object
 param retentionInDays int = 30
 
@@ -24,7 +25,7 @@ resource wks 'Microsoft.OperationalInsights/workspaces@2021-06-01' = {
 
 resource azureMonitorWorkspace 'Microsoft.Monitor/accounts@2021-06-03-preview' = {
   name: azMonName
-  location: location
+  location: azMonLocation
   properties: {
   }
 }
