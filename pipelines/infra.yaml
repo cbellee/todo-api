@@ -9,16 +9,27 @@ trigger:
 name: 'Deploy Infrastructure'
 
 variables:
-  vmImageName: 'ubuntu-latest'
-  location: 'australiaeast'
-  locationShortName: 'aue'
-  resourceGroupName: 'aca-todolist-$(locationShortName)-rg'
-  azureServiceConnection: 'internal_azure_subscription'
-  templateFilePath: 'infra/main.bicep'
-  fileShareName: 'telegraf-share'
-  orgName: 'kainidev'
-  projectName: 'AzureFastTrackCustomerExamples'
-  group-id: '17'
+  - group: 'aca-vars'
+  - name: vmImageName
+    value: 'ubuntu-latest'
+  - name: location
+    value: 'australiaeast'
+  - name: locationShortName
+    value: 'aue'
+  - name: resourceGroupName
+    value: 'aca-todolist-$(locationShortName)-rg'
+  - name: azureServiceConnection
+    value: 'internal_azure_subscription'
+  - name: templateFilePath
+    value: 'infra/main.bicep'
+  - name: fileShareName
+    value: 'telegraf-share'
+  - name: orgName
+    value: 'kainidev'
+  - name: projectName
+    value: 'AzureFastTrackCustomerExamples'
+  - name: group-id
+    value: '17'
 
 
 pool:
