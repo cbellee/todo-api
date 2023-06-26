@@ -4,19 +4,37 @@ trigger:
 name: Deploy Bicep files
 
 variables:
-  vmImageName: 'ubuntu-latest'
-  location: 'australiaeast'
-  locationShortName: 'aue'
-  resourceGName: 'aca-todolist-$(locationShortName)-rg'
-  azureServiceConnection: 'internal_azure_subscription'
-  templateFile: '../infra/main.bicep'
-  apiName: 'todolist'
-  apiPort: '8080'
-  userPrincipalId: '57963f10-818b-406d-a2f6-6e758d86e259'
-  mountPath: '/etc/telegraf'
-  tags: 'Environment=Dev'
-  containerAppEnvId: string
-  acrRepositoryName: 'aca-todolist-demo-api'
+  - group: 'aca-vars'
+  - name: vmImageName
+    value: 'ubuntu-latest'
+  - name: location
+    value: 'australiaeast'
+  - name: locationShortName
+    value: 'aue'
+  - name: resourceGroupName
+    value: 'aca-todolist-$(locationShortName)-rg'
+  - name: azureServiceConnection
+    value: 'internal_azure_subscription'
+  - name: templateFile
+    value: '/infra/main.bicep'
+  - name: apiName
+    value: 'todolist'
+  - name: apiPort
+    value: '8080'
+  - name: mountPath
+    value: '/etc/telegraf'
+  - name: acrRepositoryName
+    value: 'aca-todolist-demo-api'
+  - name: acrName
+    value: $[variables.acrName]userPrincipalId]
+  - name: containerAppEnvId
+    value: $[variables.containerAppEnvironmentId]
+  - name: sqlCxnString
+    value: $[variables.sqlCxnString]
+  - name: sqlServerName
+    value: $[variables.sqlServerName]
+  - name: storageAccountName
+    value: $[variables.storageAccountName]
 
 resources:
   containers:
