@@ -61,8 +61,7 @@ steps:
     scriptLocation: inlineScript
     azureSubscription: $(azureServiceConnection)
     inlineScript: |
-      Write-Host '$(infraOutputs)'
-      $(System.AccessToken) | az devops login --organization https://dev.azure.com/$(orgName)
+      '$(System.AccessToken)' | az devops login --organization https://dev.azure.com/$(orgName)
       $outputs = '$(infraOutputs)' | ConvertFrom-Json -AsHashtable
 
       foreach ($key in $outputs.Keys) {
@@ -73,46 +72,3 @@ steps:
           --org https://dev.azure.com/$(orgName) `
           --project $(projectName)
       }
-
-- script: |
-    echo $SYSTEM_ACCESSTOKEN | az devops login --organization https://dev.azure.com/$(orgName)
-
-    az pipelines variable-group variable update \
-      --group-id $(group-id) \
-      --name containerAppEnvironmentId \
-      --value "$(containerAppEnvironmentId)" \
-      --org https://dev.azure.com/$(orgName) \
-      --project $(projectName)
-
-      az pipelines variable-group variable update \
-      --group-id $(group-id) \
-      --name acrName \
-      --value "$(acrName)" \
-      --org https://dev.azure.com/$(orgName) \
-      --project $(projectName)
-
-      az pipelines variable-group variable update \
-      --group-id $(group-id) \
-      --name sqlCxnString \
-      --value "$(sqlCxnString)" \
-      --org https://dev.azure.com/$(orgName) \
-      --project $(projectName)
-
-      az pipelines variable-group variable update \
-      --group-id $(group-id) \
-      --name storageAccountName \
-      --value "$(storageAccountName)" \
-      --org https://dev.azure.com/$(orgName) \
-      --project $(projectName)
-
-      az pipelines variable-group variable update \
-      --group-id $(group-id) \
-      --name sqlServerName \
-      --value "$(sqlServerName)" \
-      --org https://dev.azure.com/$(orgName) \
-      --project $(projectName)
-
-  displayName: "Update variables inside 'acr-vars' variable group"
-  enabled: false
-  env:
-    SYSTEM_ACCESSTOKEN: $(System.AccessToken)
