@@ -64,7 +64,7 @@ steps:
     azureSubscription: $(azureServiceConnection)
     inlineScript: |
       echo $SYSTEM_ACCESSTOKEN | az devops login --organization https://dev.azure.com/$(orgName)
-      $outputs = $(infraOutputs) | ConvertFrom-Json -AsHastable
+      $outputs = "$(infraOutputs)" | ConvertFrom-Json -AsHastable
 
       foreach ($key in $outputs.Keys) {
         az pipelines variable-group variable update \
