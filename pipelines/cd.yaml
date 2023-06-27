@@ -61,6 +61,6 @@ stages:
           -sqlCxnString $(sqlCxnString) 
           -sqlServerName $(sqlServerName) 
           -containerAppEnvId $(containerAppEnvironmentId)
-          -containerImage "${{resources.container.mycontainer.repository}}:${{resources.container.todoapp.tag}}" 
+          -containerImage "${{resources.container.todoapp.repository}}:${{resources.container.todoapp.tag}}" 
           -userPrincipalId $(principalId) 
           -mountPath $(mountPath)
