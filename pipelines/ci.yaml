@@ -21,13 +21,15 @@ stages:
 - stage: ContainerBuildStage
   displayName: Container build stage
   jobs:
+
   - job: ContainerBuildJob
     displayName: Container Build job
     pool:
       vmImage: $(vmImageName)
     steps:
+
     - checkout: self 
-    
+
     - task: AzureCLI@2
       name: 'BuildAndPushImage'
       displayName: 'Build and push an image to Azure Container Registry'
@@ -35,5 +37,5 @@ stages:
         azureSubscription: $(azureServiceConnection)
         scriptType: bash
         inlineScript: |
-          az acr build --registry $(acrName) --platform linux --file /api/Dockerfile --image $(imageRepository):$(tag) /api
+          az acr build --registry $(acrName) --platform linux --file /api/Dockerfile --image $(imageRepository):$(tag) api
         scriptLocation: inlineScript
