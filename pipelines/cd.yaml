@@ -22,16 +22,14 @@ variables:
 
 resources:
   containers:
-  - container: mycontainer # name of the container (Alias) 
+  - container: todoApp # name of the container (Alias) 
     image: todoApiImage # image name to be used in the pipeline
     type: ACR
     azureSubscription: $(azureServiceConnection)
     resourceGroup: $(resourceGroupName)
     registry: $(acrName)
     repository: $(acrRepositoryName)
-    trigger:
-      tags:
-      - latest # tag for the container image to use
+    trigger: true
 
 pool:
   vmImage: $(vmImageName)
