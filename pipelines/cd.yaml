@@ -1,7 +1,4 @@
-trigger:
-  - none
-
-name: Deploy Bicep files
+trigger: none
 
 variables:
   - group: 'aca-vars'
