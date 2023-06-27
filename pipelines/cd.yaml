@@ -7,16 +7,10 @@ variables:
   - group: 'aca-vars'
   - name: vmImageName
     value: 'ubuntu-latest'
-  - name: location
-    value: 'australiaeast'
-  - name: locationShortName
-    value: 'aue'
-  - name: resourceGroupName
-    value: 'aca-todolist-$(locationShortName)-rg'
   - name: azureServiceConnection
     value: 'internal_azure_subscription'
   - name: templateFile
-    value: '/infra/main.bicep'
+    value: 'infra/main.bicep'
   - name: apiName
     value: 'todolist'
   - name: apiPort
@@ -24,21 +18,12 @@ variables:
   - name: mountPath
     value: '/etc/telegraf'
   - name: acrRepositoryName
-    value: 'aca-todolist-demo-api'
-  - name: acrName
-    value: $[variables.acrName]userPrincipalId]
-  - name: containerAppEnvId
-    value: $[variables.containerAppEnvironmentId]
-  - name: sqlCxnString
-    value: $[variables.sqlCxnString]
-  - name: sqlServerName
-    value: $[variables.sqlServerName]
-  - name: storageAccountName
-    value: $[variables.storageAccountName]
+    value: 'todo-api'
 
 resources:
   containers:
   - container: mycontainer # name of the container (Alias) 
+    image: todoApiImage # image name to be used in the pipeline
     type: ACR
     azureSubscription: $(azureServiceConnection)
     resourceGroup: $(resourceGroupName)
@@ -61,7 +46,7 @@ steps:
     resourceGroupName: '$(resourceGroupName)'
     location: '$(location)'
     templateLocation: 'Linked artifact'
-    csmFile: '../infra/app.bicep'
+    csmFile: '$(templateFile)'
     deploymentMode: 'Incremental'
     deploymentName: 'DeployPipelineTemplate'
     deploymentOutputs: 'containerAppOutputs'
