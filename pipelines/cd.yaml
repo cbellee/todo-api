@@ -22,10 +22,10 @@ resources:
   - container: todoapp # name of the container (Alias) 
     image: 'todo-api' # image name to be used in the pipeline
     type: ACR
-    azureSubscription: $(azureServiceConnection)
-    resourceGroup: $(resourceGroupName)
-    registry: $(acrName)
-    repository: $(acrRepositoryName)
+    azureSubscription: 'internal_azure_subscription' # $(azureServiceConnection)
+    resourceGroup: 'aca-todolist-aue-rg' # $(resourceGroupName)
+    registry: 'acr2csjlg2qhpcuq' # $(acrName)
+    repository: 'todo-api' # $(acrRepositoryName)
     trigger: 
       enabled: 'true'
 
