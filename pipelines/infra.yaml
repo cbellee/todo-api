@@ -53,19 +53,30 @@ steps:
     deploymentOutputs: 'infraOutputs'
     overrideParameters: '-location $(location) -fileShareName $(fileShareName)'
 
-- bash: |
-    echo "##vso[task.setvariable variable=containerAppEnvironmentId]$(echo $INFRA_OUTPUTS | jq -r '.containerAppEnvironmentId.value')"
-    echo "##vso[task.setvariable variable=acrName]$(echo $INFRA_OUTPUTS | jq -r '.acrName.value')"
-    echo "##vso[task.setvariable variable=sqlCxnString]$(echo $INFRA_OUTPUTS | jq -r '.sqlCxnString.value')"
-    echo "##vso[task.setvariable variable=storageAccountName]$(echo $INFRA_OUTPUTS | jq -r '.storageAccountName.value')"
-    echo "##vso[task.setvariable variable=sqlServerName]$(echo $INFRA_OUTPUTS | jq -r '.sqlServerName.value')"
-
-  displayName: 'Parse ARM outputs'
+- task: AzureCLI@2
+  name: 'infraOutputs'
+  displayName: "Get outputs from infra deployment & Update variables inside 'acr-vars' variable group"
   env:
-    INFRA_OUTPUTS: $(infraOutputs)
+    SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+  inputs:
+    scriptType: pscore
+    scriptLocation: inlineScript
+    azureSubscription: $(azureServiceConnection)
+    inlineScript: |
+      echo $SYSTEM_ACCESSTOKEN | az devops login --organization https://dev.azure.com/$(orgName)
+      $outputs = $(infraOutputs) | ConvertFrom-Json -AsHastable
+
+      foreach ($key in $outputs.Keys) {
+        az pipelines variable-group variable update \
+          --group-id $(group-id) \
+          --name "$($key)" \
+          --value "$($outputs.$key.value)" \
+          --org https://dev.azure.com/$(orgName) \
+          --project $(projectName)
+      }
 
 - script: |
-    echo $SYSTEM_ACCESSTOKEN | az devops login
+    echo $SYSTEM_ACCESSTOKEN | az devops login --organization https://dev.azure.com/$(orgName)
 
     az pipelines variable-group variable update \
       --group-id $(group-id) \
@@ -103,5 +114,6 @@ steps:
       --project $(projectName)
 
   displayName: "Update variables inside 'acr-vars' variable group"
+  enabled: false
   env:
     SYSTEM_ACCESSTOKEN: $(System.AccessToken)
