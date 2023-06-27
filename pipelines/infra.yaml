@@ -63,7 +63,7 @@ steps:
     scriptLocation: inlineScript
     azureSubscription: $(azureServiceConnection)
     inlineScript: |
-      Write-Host "$(infraOutputs)"
+      Write-Host '$(infraOutputs)'
       $SYSTEM_ACCESSTOKEN | az devops login --organization https://dev.azure.com/$(orgName)
       $outputs = '$(infraOutputs)' | ConvertFrom-Json -AsHastable
 
