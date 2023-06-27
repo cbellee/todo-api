@@ -29,21 +29,26 @@ resources:
     trigger: 
       enabled: true
 
-pool:
-  vmImage: $(vmImageName)
-
-steps:
-- task: AzureResourceManagerTemplateDeployment@3
-  name: 'appDeployment'
-  inputs:
-    deploymentScope: 'Resource Group'
-    azureResourceManagerConnection: '$(azureServiceConnection)'
-    action: 'Create Or Update Resource Group'
-    resourceGroupName: '$(resourceGroupName)'
-    location: '$(location)'
-    templateLocation: 'Linked artifact'
-    csmFile: '$(templateFile)'
-    deploymentMode: 'Incremental'
-    deploymentName: 'DeployPipelineTemplate'
-    deploymentOutputs: 'containerAppOutputs'
-    overrideParameters: '-location $(location) -apiName $(apiName) -apiPort $(apiPort) -acrName $(resources.container.todoapp.registry) -storageAccountName $(storageAccountName) -sqlCxnString $(sqlCxnString) -sqlServerName $(sqlServerName) -managedEnvironmentId $(containerAppEnvironmentId) -containerImage "$(resources.container.mycontainer.repository):$(resources.container.todoapp.tag)" -userPrincipalId $(principalId) -mountPath $(mountPath)'
+stages:
+- stage: ContainerAppDeployStage
+  displayName: Container app deploy stage
+  jobs:
+  - job: ContainerAppDeployJob
+    displayName: Container App Deploy job
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: AzureResourceManagerTemplateDeployment@3
+      name: 'appDeployment'
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: '$(azureServiceConnection)'
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: '$(resourceGroupName)'
+        location: '$(location)'
+        templateLocation: 'Linked artifact'
+        csmFile: '$(templateFile)'
+        deploymentMode: 'Incremental'
+        deploymentName: 'DeployPipelineTemplate'
+        deploymentOutputs: 'containerAppOutputs'
+        overrideParameters: '-location $(location) -apiName $(apiName) -apiPort $(apiPort) -acrName $(resources.container.todoapp.registry) -storageAccountName $(storageAccountName) -sqlCxnString $(sqlCxnString) -sqlServerName $(sqlServerName) -managedEnvironmentId $(containerAppEnvironmentId) -containerImage "$(resources.container.mycontainer.repository):$(resources.container.todoapp.tag)" -userPrincipalId $(principalId) -mountPath $(mountPath)'

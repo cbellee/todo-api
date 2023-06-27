@@ -21,7 +21,6 @@ stages:
 - stage: ContainerBuildStage
   displayName: Container build stage
   jobs:
-
   - job: ContainerBuildJob
     displayName: Container Build job
     pool:
