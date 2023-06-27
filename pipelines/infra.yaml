@@ -68,11 +68,11 @@ steps:
       $outputs = '$(infraOutputs)' | ConvertFrom-Json -AsHastable
 
       foreach ($key in $outputs.Keys) {
-        az pipelines variable-group variable update \
-          --group-id $(group-id) \
-          --name "$($key)" \
-          --value "$($outputs.$key.value)" \
-          --org https://dev.azure.com/$(orgName) \
+        az pipelines variable-group variable update `
+          --group-id $(group-id) `
+          --name "$($key)" `
+          --value "$($outputs.$key.value)" `
+          --org https://dev.azure.com/$(orgName) `
           --project $(projectName)
       }
 
