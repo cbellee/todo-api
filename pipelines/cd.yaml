@@ -31,9 +31,6 @@ resources:
     repository: $(acrRepositoryName)
     trigger: 
       enabled: true
-      tags:
-        include:
-        - latest
 
 pool:
   vmImage: $(vmImageName)
