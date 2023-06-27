@@ -26,7 +26,7 @@ stages:
   - job: ContainerBuildJob
     displayName: Container Build job
     pool:
-      name: $(vmImageName)
+      vmImage: $(vmImageName)
     steps:
     - task: AzureCLI@2
       name: 'BuildAndPushImage'
