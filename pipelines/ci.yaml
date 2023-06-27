@@ -1,5 +1,10 @@
 trigger:
-- main
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - api/*
 
 variables:
   - group: 'aca-vars'
@@ -8,7 +13,7 @@ variables:
   - name: azureServiceConnection
     value: 'internal_azure_subscription'
   - name: imageRepository
-    value: 'aca-todolist-demo-api'
+    value: 'todo-api'
   - name: tag
     value: '$(Build.BuildId)'
   - name: vmImageName

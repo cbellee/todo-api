@@ -64,6 +64,7 @@ steps:
       '$(System.AccessToken)' | az devops login --organization https://dev.azure.com/$(orgName)
       $outputs = '$(infraOutputs)' | ConvertFrom-Json -AsHashtable
 
+      # NOTE: 'Project Collection Build Service' requires 'Administraor' role on the variable group to update variables
       foreach ($key in $outputs.Keys) {
         az pipelines variable-group variable update `
           --group-id $(group-id) `
