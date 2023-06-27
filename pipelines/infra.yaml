@@ -56,15 +56,13 @@ steps:
 - task: AzureCLI@2
   name: 'infraOutputs'
   displayName: "Get outputs from infra deployment & Update variables inside 'acr-vars' variable group"
-  env:
-    SYSTEM_ACCESSTOKEN: $(System.AccessToken)
   inputs:
     scriptType: pscore
     scriptLocation: inlineScript
     azureSubscription: $(azureServiceConnection)
     inlineScript: |
       Write-Host '$(infraOutputs)'
-      $SYSTEM_ACCESSTOKEN | az devops login --organization https://dev.azure.com/$(orgName)
+      $(System.AccessToken) | az devops login --organization https://dev.azure.com/$(orgName)
       $outputs = '$(infraOutputs)' | ConvertFrom-Json -AsHashtable
 
       foreach ($key in $outputs.Keys) {
