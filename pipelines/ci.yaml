@@ -8,8 +8,6 @@ trigger:
 
 variables:
   - group: 'aca-vars'
-  - name: acrName
-    value: $[variables.acrName]
   - name: azureServiceConnection
     value: 'internal_azure_subscription'
   - name: imageRepository
