@@ -12,7 +12,7 @@ variables:
   - name: templateFile
     value: 'infra/app.bicep'
   - name: apiName
-    value: 'todolist'
+    value: 'todo-api'
   - name: apiPort
     value: '8080'
   - name: mountPath
@@ -23,7 +23,7 @@ variables:
 resources:
   containers:
   - container: todoapp # name of the container (Alias) 
-    # image: todoApiImage # image name to be used in the pipeline
+    image: 'todo-api' # image name to be used in the pipeline
     type: ACR
     azureSubscription: $(azureServiceConnection)
     resourceGroup: $(resourceGroupName)
