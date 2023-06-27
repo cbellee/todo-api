@@ -29,7 +29,8 @@ resources:
     resourceGroup: $(resourceGroupName)
     registry: $(acrName)
     repository: $(acrRepositoryName)
-    trigger: true
+    trigger: 
+      enabled: true
 
 pool:
   vmImage: $(vmImageName)
