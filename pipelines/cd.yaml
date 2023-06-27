@@ -48,4 +48,4 @@ steps:
     deploymentMode: 'Incremental'
     deploymentName: 'DeployPipelineTemplate'
     deploymentOutputs: 'containerAppOutputs'
-    overrideParameters: '-location $(location) -apiName $(apiName) -apiPort $(apiPort) -acrName $(resources.container.todoapp.registry) -storageAccountName $(storageAccountName) -sqlCxnString $(sqlCxnString) -sqlServerName $(sqlServerName) -managedEnvironmentId $(containerAppEnvironmentId) -containerImage $(resources.container.mycontainer.repository):$(resources.container.todoapp.tag) -userPrincipalId $(principalId) -mountPath $(mountPath)'
+    overrideParameters: '-location $(location) -apiName $(apiName) -apiPort $(apiPort) -acrName $(resources.container.todoapp.registry) -storageAccountName $(storageAccountName) -sqlCxnString $(sqlCxnString) -sqlServerName $(sqlServerName) -managedEnvironmentId $(containerAppEnvironmentId) -containerImage "$(resources.container.mycontainer.repository):$(resources.container.todoapp.tag)" -userPrincipalId $(principalId) -mountPath $(mountPath)'
