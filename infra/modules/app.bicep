@@ -2,6 +2,7 @@ param location string
 param apiName string
 param tags object = {
   environment: 'dev'
+  costcode: '1234567890'
 }
 param apiPort string
 param containerImage string

@@ -11,7 +11,10 @@ param sqlCxnString string
 param storageAccountName string
 param storageNameMount string
 param sqlServerName string
-param tags object
+param tags object = {
+  environment: 'dev'
+  costcode: '12345'
+}
 
 var volumeName = 'azure-file-volume'
 var listenAddress = '8080'
