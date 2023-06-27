@@ -19,7 +19,7 @@ variables:
 
 resources:
   containers:
-  - container: todoapp # name of the container (Alias) 
+  - container: 'todoapp' # name of the container (Alias) 
     image: 'todo-api' # image name to be used in the pipeline
     type: ACR
     azureSubscription: 'internal_azure_subscription' # $(azureServiceConnection)
@@ -27,7 +27,7 @@ resources:
     registry: 'acr2csjlg2qhpcuq' # $(acrName)
     repository: 'todo-api' # $(acrRepositoryName)
     trigger: 
-      enabled: 'true'
+      enabled: true
 
 stages:
 - stage: ContainerAppDeployStage
@@ -40,15 +40,27 @@ stages:
     steps:
     - task: AzureResourceManagerTemplateDeployment@3
       name: 'appDeployment'
+      displayName: 'Deploy container app'
       inputs:
         deploymentScope: 'Resource Group'
-        azureResourceManagerConnection: '$(azureServiceConnection)'
+        azureResourceManagerConnection: $(azureServiceConnection)
         action: 'Create Or Update Resource Group'
-        resourceGroupName: '$(resourceGroupName)'
-        location: '$(location)'
+        resourceGroupName: $(resourceGroupName)
+        location: $(location)
         templateLocation: 'Linked artifact'
-        csmFile: '$(templateFile)'
+        csmFile: $(templateFile)
         deploymentMode: 'Incremental'
-        deploymentName: 'DeployPipelineTemplate'
+        deploymentName: 'app'
         deploymentOutputs: 'containerAppOutputs'
-        overrideParameters: '-location $(location) -apiName $(apiName) -apiPort $(apiPort) -acrName $(resources.container.todoapp.registry) -storageAccountName $(storageAccountName) -sqlCxnString $(sqlCxnString) -sqlServerName $(sqlServerName) -managedEnvironmentId $(containerAppEnvironmentId) -containerImage "$(resources.container.mycontainer.repository):$(resources.container.todoapp.tag)" -userPrincipalId $(principalId) -mountPath $(mountPath)'
+        overrideParameters: |
+          -location $(location) 
+          -apiName $(apiName) 
+          -apiPort $(apiPort) 
+          -acrName $(resources.container.todoapp.registry) 
+          -storageAccountName $(storageAccountName) 
+          -sqlCxnString $(sqlCxnString) 
+          -sqlServerName $(sqlServerName) 
+          -containerAppEnvId $(containerAppEnvironmentId) 
+          -containerImage "$(resources.container.mycontainer.repository):$(resources.container.todoapp.tag)" 
+          -userPrincipalId $(principalId) 
+          -mountPath $(mountPath)
