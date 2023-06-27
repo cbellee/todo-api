@@ -27,7 +27,7 @@ resources:
     registry: $(acrName)
     repository: $(acrRepositoryName)
     trigger: 
-      enabled: true
+      enabled: 'true'
 
 stages:
 - stage: ContainerAppDeployStage
