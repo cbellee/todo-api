@@ -1,5 +1,5 @@
 trigger:
-- main
+  - none
 
 name: Deploy Bicep files
 
@@ -10,7 +10,7 @@ variables:
   - name: azureServiceConnection
     value: 'internal_azure_subscription'
   - name: templateFile
-    value: 'infra/main.bicep'
+    value: 'infra/app.bicep'
   - name: apiName
     value: 'todolist'
   - name: apiPort
@@ -22,7 +22,7 @@ variables:
 
 resources:
   containers:
-  - container: todoApp # name of the container (Alias) 
+  - container: todoapp # name of the container (Alias) 
     image: todoApiImage # image name to be used in the pipeline
     type: ACR
     azureSubscription: $(azureServiceConnection)
@@ -52,8 +52,11 @@ steps:
       -location $(location)
       -apiName: $(apiName)
       -apiPort: $(apiPort)
-      -acrName: $(resources.container.mycontainer.registry)
+      -acrName: $(resources.container.todoapp.registry)
+      -storageAccountName: $(storageAccountName)
+      -sqlCxnString: $(sqlCxnString)
+      -managedEnvironmentId: $(containerAppEnvironmentId)
       -grafanaPrincipalId: $(principalId)
-      -containerImage: $(resources.container.mycontainer.repository):$(resources.container.mycontainer.tag)
+      -containerImage: $(resources.container.mycontainer.repository):$(resources.container.todoapp.tag)
       -userPrincipalId: $(principalId)
       -mountPath: $(mountPath)

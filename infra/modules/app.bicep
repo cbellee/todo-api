@@ -1,6 +1,8 @@
 param location string
 param apiName string
-param tags object
+param tags object = {
+  environment: 'dev'
+}
 param apiPort string
 param containerImage string
 param acrName string
@@ -11,7 +13,7 @@ param sqlCxnString string
 param storageNameMount string = 'storage-mount'
 param volumeName string = 'storage-volume'
 param mountPath string = '/mnt/storage'
-param userPrincipalId string = '57963f10-818b-406d-a2f6-6e758d86e259'
+param userPrincipalId string
 param concurrentRequestsScaleRule string = '50'
 param listenAddress string = '8080'
 param metricsListenAddress string = '8081'
