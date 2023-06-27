@@ -33,5 +33,6 @@ stages:
         azureSubscription: $(azureServiceConnection)
         scriptType: bash
         inlineScript: |
-          az acr build --registry $(acrName) --platform linux --file /api/Dockerfile --image $(imageRepository):$(tag) /api
+          cd /api 
+          az acr build --registry $(acrName) --platform linux --file /api/Dockerfile --image $(imageRepository):$(tag) .
         scriptLocation: inlineScript
