@@ -56,7 +56,7 @@ stages:
           -location $(location) 
           -apiName $(apiName) 
           -apiPort $(apiPort) 
-          -acrName $(resources.container.todoapp.registry) 
+          -acrName ${{resources.container.todoapp.registry}}
           -storageAccountName $(storageAccountName) 
           -sqlCxnString $(sqlCxnString) 
           -sqlServerName $(sqlServerName) 
