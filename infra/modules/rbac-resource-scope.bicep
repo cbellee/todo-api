@@ -10,7 +10,6 @@ resource acr 'Microsoft.ContainerRegistry/registries@2021-06-01-preview' existin
   name: acrName
 }
 
-
 resource umidAcrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
   name: guid(umidName, resourceGroup().id, 'acrPullRoleAssignment')
   scope: acr
