@@ -27,7 +27,7 @@ resources:
     registry: 'acr2csjlg2qhpcuq' # $(acrName)
     repository: 'todo-api' # $(acrRepositoryName)
     trigger: 
-      enabled: true
+      enabled: 'true'
 
 stages:
 - stage: ContainerAppDeployStage
