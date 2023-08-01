@@ -1,5 +1,5 @@
 
-let endpoint = 'https://todolistapp.blackbush-33096089.australiaeast.azurecontainerapps.io'
+let endpoint = 'https://aca-todolist-demo.braveground-c7fa82d3.westeurope.azurecontainerapps.io'
 // let endpoint = 'http://localhost:8080'
 
 export async function getTodos() {
