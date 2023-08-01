@@ -1,64 +1,80 @@
 param location string
 param apiName string
-param tags object
+param tags object = {
+  environment: 'dev'
+  costcode: '1234567890'
+}
 param apiPort string
 param containerImage string
 param acrName string
 param managedEnvironmentId string
-
-@secure()
-param storageAccountKey string
-
-@secure()
-param acrAdminPassword string
-
+param storageAccountName string
 param telegrafImage string = 'telegraf:1.23.4'
-param acrLoginServer string
 param sqlCxnString string
-param storageNameMount string
-param volumeName string
-param mountPath string
+param storageNameMount string = 'storage-mount'
+param volumeName string = 'storage-volume'
+param mountPath string = '/mnt/storage'
 param userPrincipalId string
-param grafanaPrincipalId string
 param concurrentRequestsScaleRule string = '50'
-param listenAddress string
-param metricsListenAddress string
-param maxIdleDbCxns string
-param maxOpenDbCxns string
+param listenAddress string = '8080'
+param metricsListenAddress string = '8081'
+param maxIdleDbCxns string = '10'
+param maxOpenDbCxns string = '20'
+param timeStamp string = utcNow()
+param minReplicas int = 3
+param maxReplicas int = 12
 
 var azMonMetricsPublisherRoleDefinitionID = '3913510d-42f4-4e42-8a64-420c390055eb'
 var azMonDataReaderRoleDefinitionID = 'b0d8363b-8ddd-447d-831f-62ca05bff136'
 var grafanaAdminRoleDefinitionID = '22926164-76b3-42b3-bc55-97df8dab3e41'
+var acrPullRoleDefinitionId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
+var umidName = 'aca-umid'
+
+resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' existing = {
+  name: storageAccountName
+}
+
+resource umid 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: umidName
+  location: location
+}
+
+module acrPull 'rbac-resource-scope.bicep' = {
+  name: 'module-acrPull-${timeStamp}'
+  params: {
+    acrName: acrName
+    umidName: umidName
+    acrPullRoleDefinitionId: acrPullRoleDefinitionId
+  }
+}
 
 resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
   name: apiName
   location: location
   tags: tags
   identity: {
-    type: 'SystemAssigned'
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${umid.id}': {}
+    }
   }
   properties: {
     configuration: {
       activeRevisionsMode: 'Multiple'
       secrets: [
         {
-          name: 'registry-password'
-          value: acrAdminPassword
-        }
-        {
           name: 'sql-cxn-string'
           value: sqlCxnString
         }
         {
           name: 'storage-account-key'
-          value: storageAccountKey
+          value: storageAccount.listKeys().keys[0].value
         }
       ]
       registries: [
         {
-          passwordSecretRef: 'registry-password'
-          server: acrLoginServer
-          username: acrName
+          server: '${acrName}.azurecr.io'
+          identity: umid.id
         }
       ]
       ingress: {
@@ -148,13 +164,12 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
               volumeName: volumeName
             }
           ]
-          env: [
-          ]
+          env: []
         }
       ]
       scale: {
-        minReplicas: 3
-        maxReplicas: 18
+        minReplicas: minReplicas
+        maxReplicas: maxReplicas
         rules: [
           {
             name: 'http-scale-rule'
@@ -168,19 +183,22 @@ resource todoListApi 'Microsoft.App/containerApps@2022-06-01-preview' = {
       }
     }
   }
+  dependsOn: [
+    acrPull
+  ]
 }
 
 module azMonMetricsPublisherRbac 'rbac-resourcegroup-scope.bicep' = {
-  name: 'module-azMonMetricsPublisherRbac'
+  name: 'module-azMonMetricsPublisherRbac-${timeStamp}'
   params: {
-    principalId: todoListApi.identity.principalId
+    principalId: umid.properties.principalId
     roleDefinitionID: azMonMetricsPublisherRoleDefinitionID
     principalType: 'ServicePrincipal'
   }
 }
 
 module azMonDataReader 'rbac-resourcegroup-scope.bicep' = {
-  name: 'module-azMonDataReaderRbac'
+  name: 'module-azMonDataReaderRbac-${timeStamp}'
   params: {
     principalId: userPrincipalId
     roleDefinitionID: azMonDataReaderRoleDefinitionID
@@ -189,7 +207,7 @@ module azMonDataReader 'rbac-resourcegroup-scope.bicep' = {
 }
 
 module grafanaAdminRole 'rbac-resourcegroup-scope.bicep' = {
-  name: 'module-grafanaAdminRbac'
+  name: 'module-grafanaAdminRbac-${timeStamp}'
   params: {
     principalId: userPrincipalId
     roleDefinitionID: grafanaAdminRoleDefinitionID
@@ -198,9 +216,9 @@ module grafanaAdminRole 'rbac-resourcegroup-scope.bicep' = {
 }
 
 module grafanaReadAccessLogAnalyticsRole 'rbac-resourcegroup-scope.bicep' = {
-  name: 'module-grafanaLogAnalyticsReadRbac'
+  name: 'module-grafanaLogAnalyticsReadRbac-${timeStamp}'
   params: {
-    principalId: grafanaPrincipalId
+    principalId: userPrincipalId
     roleDefinitionID: grafanaAdminRoleDefinitionID
     principalType: 'ServicePrincipal'
   }

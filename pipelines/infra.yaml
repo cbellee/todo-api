@@ -1,0 +1,75 @@
+trigger:
+  branches:
+    include:
+      - 'main'
+  paths:
+    include:
+      - 'infra/*'
+
+name: 'Deploy Infrastructure'
+
+variables:
+  - group: 'aca-vars'
+  - name: vmImageName
+    value: 'ubuntu-latest'
+  - name: location
+    value: 'australiaeast'
+  - name: locationShortName
+    value: 'aue'
+  - name: resourceGroupName
+    value: 'aca-todolist-$(locationShortName)-rg'
+  - name: azureServiceConnection
+    value: 'internal_azure_subscription'
+  - name: templateFilePath
+    value: 'infra/main.bicep'
+  - name: fileShareName
+    value: 'telegraf-share'
+  - name: orgName
+    value: 'kainidev'
+  - name: projectName
+    value: 'AzureFastTrackCustomerExamples'
+  - name: group-id
+    value: '17'
+
+
+pool:
+  vmImage: $(vmImageName)
+
+steps:
+- checkout: self 
+
+- task: AzureResourceManagerTemplateDeployment@3
+  name: 'infraDeployment'
+  inputs:
+    deploymentScope: 'Resource Group'
+    azureResourceManagerConnection: $(azureServiceConnection)
+    action: 'Create Or Update Resource Group'
+    resourceGroupName: $(resourceGroupName)
+    location: $(location)
+    templateLocation: 'Linked artifact'
+    csmFile: $(templateFilePath)
+    deploymentMode: 'Incremental'
+    deploymentName: 'infra'
+    deploymentOutputs: 'infraOutputs'
+    overrideParameters: '-location $(location) -fileShareName $(fileShareName)'
+
+- task: AzureCLI@2
+  name: 'infraOutputs'
+  displayName: "Get outputs from infra deployment & Update variables inside 'acr-vars' variable group"
+  inputs:
+    scriptType: pscore
+    scriptLocation: inlineScript
+    azureSubscription: $(azureServiceConnection)
+    inlineScript: |
+      '$(System.AccessToken)' | az devops login --organization https://dev.azure.com/$(orgName)
+      $outputs = '$(infraOutputs)' | ConvertFrom-Json -AsHashtable
+
+      # NOTE: 'Project Collection Build Service' requires 'Administraor' role on the variable group to update variables
+      foreach ($key in $outputs.Keys) {
+        az pipelines variable-group variable update `
+          --group-id $(group-id) `
+          --name "$($key)" `
+          --value "$($outputs.$key.value)" `
+          --org https://dev.azure.com/$(orgName) `
+          --project $(projectName)
+      }

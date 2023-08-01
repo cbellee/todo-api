@@ -114,7 +114,7 @@ func (env *Env) GetById(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(err)
 		return
 	}
-	log.Info("TodoItem: %s", todoItem)
+	log.Info("TodoItem: %v", todoItem)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(todoItem)
 

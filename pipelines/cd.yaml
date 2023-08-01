@@ -1,0 +1,66 @@
+trigger: none
+
+variables:
+  - group: 'aca-vars'
+  - name: vmImageName
+    value: 'ubuntu-latest'
+  - name: azureServiceConnection
+    value: 'internal_azure_subscription'
+  - name: templateFile
+    value: 'infra/app.bicep'
+  - name: apiName
+    value: 'todo-api'
+  - name: apiPort
+    value: '8080'
+  - name: mountPath
+    value: '/etc/telegraf'
+  - name: acrRepositoryName
+    value: 'todo-api'
+
+resources:
+  containers:
+  - container: 'todoapp' # name of the container (Alias) 
+    # image: 'todo-api' # image name to be used in the pipeline
+    type: ACR
+    azureSubscription: 'internal_azure_subscription' # $(azureServiceConnection)
+    resourceGroup: 'aca-todolist-aue-rg' # $(resourceGroupName)
+    registry: 'acr2csjlg2qhpcuq' # $(acrName)
+    repository: 'todo-api' # $(acrRepositoryName)
+    trigger: 
+      enabled: 'true'
+
+stages:
+- stage: ContainerAppDeployStage
+  displayName: Container app deploy stage
+  jobs:
+  - job: ContainerAppDeployJob
+    displayName: Container App Deploy job
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: AzureResourceManagerTemplateDeployment@3
+      name: 'appDeployment'
+      displayName: 'Deploy container app'
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: $(azureServiceConnection)
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: $(resourceGroupName)
+        location: $(location)
+        templateLocation: 'Linked artifact'
+        csmFile: $(templateFile)
+        deploymentMode: 'Incremental'
+        deploymentName: 'app'
+        deploymentOutputs: 'containerAppOutputs'
+        overrideParameters: |
+          -location $(location) 
+          -apiName $(apiName) 
+          -apiPort $(apiPort) 
+          -acrName ${{resources.container.todoapp.registry}}
+          -storageAccountName $(storageAccountName) 
+          -sqlCxnString $(sqlCxnString) 
+          -sqlServerName $(sqlServerName) 
+          -containerAppEnvId $(containerAppEnvironmentId)
+          -containerImage "${{resources.container.todoapp.repository}}:${{resources.container.todoapp.tag}}" 
+          -userPrincipalId $(principalId) 
+          -mountPath $(mountPath)

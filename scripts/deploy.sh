@@ -7,17 +7,20 @@ while getopts "st" option; do
    esac
 done
 
-export LOCATION='westeurope'
-API_NAME='aca-todolist-demo'
+export LOCATION='australiaeast'
+LOCATION_SHORT_NAME='aue'
+API_NAME="aca-todolist-$LOCATION_SHORT_NAME"
 RG_NAME="$API_NAME-rg"
 API_PORT='8080'
 METRICS_PORT='8081'
-SEMVER='0.1.0'
+SEMVER='0.1.1'
 USER_PRINCIPAL_ID=`az ad signed-in-user show --query id --output tsv`
-export METRICS_ENDPOINT="http://localhost:${METRICS_PORT}/metrics"
 SUBSCRIPTION_ID=`az account show --query id -o tsv`
+
+export METRICS_ENDPOINT="http://localhost:${METRICS_PORT}/metrics"
 export RESOURCE_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RG_NAME}/providers/Microsoft.App/containerapps/${API_NAME}"
 
+# create resource group
 az group create --location $LOCATION --name $RG_NAME
 
 if [[ $skipBuild != 1 ]]; then
@@ -68,8 +71,8 @@ az storage file upload \
 ACR_NAME=$(az deployment group show --resource-group $RG_NAME --name 'acr-deployment' --query properties.outputs.acrName.value -o tsv)
 IMAGE="$ACR_NAME.azurecr.io/$API_NAME-api:v$SEMVER"
 
+# build & push container image to ACR
 if [[ $skipBuild != 1 ]]; then
-
 	cd ..
 
 	az acr login -n $ACR_NAME 
@@ -80,6 +83,7 @@ if [[ $skipBuild != 1 ]]; then
 	cd ./scripts
 fi
 
+# deploy infrastructire & ACA app
 az deployment group create \
 --resource-group $RG_NAME \
 --name 'app-deployment' \

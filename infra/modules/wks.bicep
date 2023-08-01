@@ -1,6 +1,7 @@
 param name string
 param azMonName string
 param location string
+param azMonLocation string
 param tags object
 param retentionInDays int = 30
 
@@ -24,7 +25,7 @@ resource wks 'Microsoft.OperationalInsights/workspaces@2021-06-01' = {
 
 resource azureMonitorWorkspace 'Microsoft.Monitor/accounts@2021-06-03-preview' = {
   name: azMonName
-  location: location
+  location: azMonLocation
   properties: {
   }
 }
@@ -53,6 +54,7 @@ resource grafana 'Microsoft.Dashboard/grafana@2022-08-01' = {
 }
 
 output workspaceId string = wks.id
+output workspaceName string = wks.name
 output azMonWorkspaceName string = azureMonitorWorkspace.name
 output workspaceSharedKey string = wks.listKeys().primarySharedKey
 output workspaceCustomerId string = wks.properties.customerId

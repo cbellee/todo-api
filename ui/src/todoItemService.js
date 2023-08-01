@@ -1,6 +1,10 @@
 
+<<<<<<< HEAD
 let endpoint = 'https://aca-todolist-demo.braveground-c7fa82d3.westeurope.azurecontainerapps.io'
 // let endpoint = 'http://localhost:8080'
+=======
+let endpoint = window._env_.API_URL
+>>>>>>> 0ea3854d0017fb8561d9b18d825383153df4005e
 
 export async function getTodos() {
     const response = await fetch(`${endpoint}/api/todos`, {

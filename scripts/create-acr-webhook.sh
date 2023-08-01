@@ -1,0 +1,1 @@
+az acr webhook create --registry acr2csjlg2qhpcuq --name myacrwebhook01 --actions push --uri http://webhookuri.com
