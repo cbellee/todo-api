@@ -125,3 +125,4 @@ output containerAppEnvironmentId string = containerAppEnvModule.outputs.id
 output sqlServerName string = sql.outputs.name
 output sqlCxnString string = sql.outputs.cxnString
 output storageAccountName string = storage.outputs.storageAccountName
+

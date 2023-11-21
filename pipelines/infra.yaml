@@ -34,7 +34,6 @@ variables:
 pool:
   vmImage: $(vmImageName)
 
-
 steps:
 - checkout: self 
 
