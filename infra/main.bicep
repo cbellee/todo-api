@@ -48,6 +48,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2022-07-01' = {
   location: location
   tags: tags
   properties: {
+    
     addressSpace: {
       addressPrefixes: [
         '10.10.0.0/16'

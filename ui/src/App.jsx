@@ -114,11 +114,11 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <Box sx={{ height: '20em', width: '95%' }}>
+        <Box sx={{ height: '20em', width: '80%' }}>
           <DataGrid
             rows={todoList}
             columns={columns}
-            pageSize={5}
+            pageSize={10}
             editMode="row"
             rowsPerPageOptions={[10]}
             disableSelectionOnClick
