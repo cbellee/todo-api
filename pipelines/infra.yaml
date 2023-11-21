@@ -31,7 +31,6 @@ variables:
   - name: group-id
     value: '17'
 
-
 pool:
   vmImage: $(vmImageName)
 
